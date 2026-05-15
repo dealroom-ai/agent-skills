@@ -29,7 +29,7 @@ Each participant gets their own `client_id` and `client_secret` — client_id is
 bash <skill-path>/scripts/setup.sh
 ```
 
-It prompts for `client_id`, `client_secret`, and a `User-Agent`, writes them to `.env` in the current directory, fetches an access token, and makes a test call to confirm everything works.
+It prompts for `client_id`, `client_secret`, and an email, derives the `User-Agent` from the current directory name + email, writes everything to `.env`, fetches an access token, and makes a test call to confirm everything works.
 
 If they prefer to do it themselves, copy `assets/.env.example` to `.env` and fill in the three values.
 
