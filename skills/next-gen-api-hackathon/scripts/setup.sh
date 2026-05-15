@@ -40,12 +40,15 @@ fi
 read -r -p "client_id (from https://app-next.beta.dealroom.co/settings/api): " CLIENT_ID
 read -r -s -p "client_secret (shown only once when you created the key): " CLIENT_SECRET
 echo
-read -r -p "User-Agent (e.g. 'HackathonApp/0.1 (you@example.com)'): " USER_AGENT
+read -r -p "Your email (for Dealroom's logs): " EMAIL
 
-if [[ -z "$CLIENT_ID" || -z "$CLIENT_SECRET" || -z "$USER_AGENT" ]]; then
+if [[ -z "$CLIENT_ID" || -z "$CLIENT_SECRET" || -z "$EMAIL" ]]; then
   red "All three values are required."
   exit 1
 fi
+
+APP_NAME=$(basename "$PWD")
+USER_AGENT="$APP_NAME/0.1 ($EMAIL)"
 
 bold "Requesting access token..."
 TOKEN_RESPONSE=$(curl -s -X POST "$AUTH_URL" \
