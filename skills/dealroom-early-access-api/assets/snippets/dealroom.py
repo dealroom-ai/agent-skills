@@ -15,7 +15,7 @@ load_dotenv()
 
 CLIENT_ID = os.environ["DEALROOM_CLIENT_ID"]
 CLIENT_SECRET = os.environ["DEALROOM_CLIENT_SECRET"]
-USER_AGENT = os.environ["DEALROOM_USER_AGENT"]
+USER_AGENT = os.environ.get("DEALROOM_USER_AGENT")
 API_BASE = os.environ.get("DEALROOM_API_BASE", "https://api-next.beta.dealroom.co")
 AUTH_URL = os.environ.get(
     "DEALROOM_AUTH_URL", "https://accounts.beta.dealroom.co/oauth/token"
@@ -30,9 +30,9 @@ class DealroomClient:
             client_secret=CLIENT_SECRET,
             token_endpoint=AUTH_URL,
         )
-        self._session.headers.update(
-            {"User-Agent": USER_AGENT, "X-Client-Id": CLIENT_ID}
-        )
+        self._session.headers.update({"X-Client-Id": CLIENT_ID})
+        if USER_AGENT:
+            self._session.headers.update({"User-Agent": USER_AGENT})
         self._fetch_token()
 
     def _fetch_token(self):

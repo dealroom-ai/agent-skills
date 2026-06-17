@@ -1,7 +1,12 @@
 /**
  * Minimal Dealroom API client with automatic OAuth2 token refresh.
  *
- * Requires: npm install simple-oauth2 axios dotenv
+ * This file uses top-level await and import.meta, so it must run as ESM. The
+ * simplest setup is to copy the sibling assets/package.json (which sets
+ * "type": "module" and a `sanity` script) and assets/tsconfig.json alongside it,
+ * then `npm install` and `npm run sanity`. tsx runs the .ts directly.
+ *
+ * Requires: simple-oauth2 axios dotenv (+ tsx typescript @types/node to run it).
  *
  * Usage:
  *   import { dealroom } from "./dealroom";
@@ -16,7 +21,7 @@ import { ClientCredentials, AccessToken } from "simple-oauth2";
 
 const CLIENT_ID = requireEnv("DEALROOM_CLIENT_ID");
 const CLIENT_SECRET = requireEnv("DEALROOM_CLIENT_SECRET");
-const USER_AGENT = requireEnv("DEALROOM_USER_AGENT");
+const USER_AGENT = process.env.DEALROOM_USER_AGENT;
 const API_BASE = process.env.DEALROOM_API_BASE ??
   "https://api-next.beta.dealroom.co";
 const AUTH_HOST = new URL(
@@ -54,8 +59,8 @@ async function getToken(): Promise<string> {
 export const dealroom: AxiosInstance = axios.create({
   baseURL: `${API_BASE}/api`,
   headers: {
-    "User-Agent": USER_AGENT,
     "X-Client-Id": CLIENT_ID,
+    ...(USER_AGENT ? { "User-Agent": USER_AGENT } : {}),
   },
 });
 

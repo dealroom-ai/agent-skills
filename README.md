@@ -27,10 +27,10 @@ Requires Node 18+. After install, restart Claude Code (or start a new session) t
 
 ## Available skills
 
-| Skill                    | What it does                                                                                            |
-| ------------------------ | ------------------------------------------------------------------------------------------------------- |
-| `linear-issue-writing`   | Structure Linear issues (parent features, sub-tasks, bug reports) with clear acceptance criteria.       |
-| `next-gen-api-hackathon` | Onboard hackathon participants to the Dealroom next-gen API — OAuth2 setup, token refresh, doc routing. |
+| Skill                       | What it does                                                                                                                          |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `linear-issue-writing`      | Structure Linear issues (parent features, sub-tasks, bug reports) with clear acceptance criteria.                                     |
+| `dealroom-early-access-api` | Build against the Dealroom early-access (next-gen) API: OAuth2 setup, picking transactional vs aggregate endpoints, live-doc routing. |
 
 ## Contributing a skill
 
