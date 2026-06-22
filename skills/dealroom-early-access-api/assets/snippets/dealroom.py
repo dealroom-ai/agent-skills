@@ -4,7 +4,7 @@ Requires: pip install authlib requests python-dotenv
 
 Usage:
     from dealroom import client
-    data = client.get("/entities", params={"limit": 10, "sort": "-launch_date"}).json()
+    data = client.get("/data/entities", params={"limit": 10, "sort": "-launch_date"}).json()
 """
 
 import os
@@ -54,6 +54,6 @@ client = DealroomClient()
 
 if __name__ == "__main__":
     # Sanity check
-    response = client.get("/entities", params={"limit": 1})
+    response = client.get("/data/entities", params={"limit": 1})
     response.raise_for_status()
     print(response.json())
