@@ -10,7 +10,7 @@
  *
  * Usage:
  *   import { dealroom } from "./dealroom";
- *   const { data } = await dealroom.get("/entities", {
+ *   const { data } = await dealroom.get("/data/entities", {
  *     params: { limit: 10, sort: "-launch_date" },
  *   });
  */
@@ -80,6 +80,6 @@ dealroom.interceptors.response.use(undefined, async (error: AxiosError) => {
 });
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const { data } = await dealroom.get("/entities", { params: { limit: 1 } });
+  const { data } = await dealroom.get("/data/entities", { params: { limit: 1 } });
   console.log(JSON.stringify(data, null, 2));
 }
