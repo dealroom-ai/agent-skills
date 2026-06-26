@@ -1,0 +1,3488 @@
+[
+  {
+    "table_name": "entities_iu",
+    "column_name": "about",
+    "description": "Entity long description",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "about_ai_generated",
+    "description": "Flag indicating if about field was AI-generated",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "alumni_count",
+    "description": "Total number of alumni (people who attended this university); NULL for non-university entities",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "alumni_founded_companies_count",
+    "description": "Total number of distinct companies founded by alumni of this university; NULL for non-university entities",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "alumni_founder_count",
+    "description": "Number of alumni who have founded at least one company; NULL for non-university entities",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "alumni_unicorn_companies_count",
+    "description": "Number of distinct unicorn companies founded by alumni of this university; NULL for non-university entities",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "angellist",
+    "description": "Entity AngelList URL",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "business_model",
+    "description": "Array of business models; each has id and name",
+    "data_type": "ARRAY<STRUCT<id INT64, name STRING>>"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "business_model.id",
+    "description": "Business model identifier",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "business_model.name",
+    "description": "Business model name",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "client_focus",
+    "description": "Array of client focus types. Available values: \"b2b\", \"b2c\"",
+    "data_type": "ARRAY<STRING>"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "closing_month",
+    "description": "Month the entity closed; NULL if operational",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "closing_year",
+    "description": "Year the entity closed (for companies); NULL if operational",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "company_status",
+    "description": "Numerical representation of company status",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "company_status_desc",
+    "description": "Textual description of company status (e.g., Operational, Acquired, Closed)",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "crunchbase",
+    "description": "Entity Crunchbase URL",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "date_became_unicorn",
+    "description": "Exact date when the company first achieved unicorn status",
+    "data_type": "DATE"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "dealroom_signal",
+    "description": "Dealroom Signal rating; contains rating, completeness, team_strength, growth_rate, timing",
+    "data_type": "STRUCT<rating NUMERIC, completeness NUMERIC, team_strength NUMERIC, growth_rate NUMERIC, timing NUMERIC>"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "dealroom_signal.completeness",
+    "description": "Completeness score of entity data",
+    "data_type": "NUMERIC"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "dealroom_signal.growth_rate",
+    "description": "Growth rate score",
+    "data_type": "NUMERIC"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "dealroom_signal.rating",
+    "description": "Overall Dealroom Signal rating score",
+    "data_type": "NUMERIC"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "dealroom_signal.team_strength",
+    "description": "Team strength score",
+    "data_type": "NUMERIC"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "dealroom_signal.timing",
+    "description": "Timing score",
+    "data_type": "NUMERIC"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "dealroom_url",
+    "description": "Canonical Dealroom app URL for this entity",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "employees",
+    "description": "Most recent full-time equivalent employee count",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "entity_type",
+    "description": "Canonical top-level entity kind (People/Organization model). Mutually exclusive with organization_subtype on persons.\nAvailable values: \"person\", \"organization\"\n",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "flg_is_colt",
+    "description": "Flag indicating if the company is a colt (revenue 25M-100M USD, excluding Verified Thoroughbreds)",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "flg_is_executive",
+    "description": "Role flag indicating the person holds at least one current executive role (companies_users.is_executive).\nEntity-level rollup; relationship detail is on people_organizations.\n",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "flg_is_exited",
+    "description": "Flag indicating if the entity has had at least one exit round (ACQUISITION, IPO, BUYOUT, or SPAC IPO)",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "flg_is_founder",
+    "description": "Role flag indicating the person has founded at least one company (companies_founders).\nEntity-level rollup; FALSE for organizations in the current model.\n",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "flg_is_funded",
+    "description": "Flag indicating if the company has received any funding rounds",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "flg_is_hiring",
+    "description": "Flag indicating if the entity currently has active (non-expired) job postings",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "flg_is_investor",
+    "description": "Role flag indicating the entity participates as an investor (has portfolio investments).\nIndependent of organization_subtype; applies to persons and organizations.\n",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "flg_is_partner",
+    "description": "Role flag indicating the person holds at least one current partner role (companies_users.is_partner).\nEntity-level rollup; relationship detail is on people_organizations.\n",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "flg_is_pe_owned",
+    "description": "Flag indicating if the company is PE-owned. True if it has a BUYOUT or GROWTH EQUITY NON VC round, or has been manually flagged via is_pe_owned_manual. Manual non-PE-owned overrides both.",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "flg_is_rising_star",
+    "description": "Flag indicating if the company is a rising star (high dealroom signal, launched 2020+, non-unicorn)",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "flg_is_spinout",
+    "description": "Flag indicating if the company has a SPINOUT funding round",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "flg_is_startup",
+    "description": "Flag indicating if the company is a startup",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "flg_is_thoroughbred",
+    "description": "Flag indicating if the company is a thoroughbred (member of the \"Verified Thoroughbreds\" sector, sector_id = 22843 — startups that reached $100M in revenue)",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "flg_is_titan",
+    "description": "Flag indicating if the entity is a titan (hardcoded list)",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "flg_is_unicorn",
+    "description": "Flag indicating if the company is or was a unicorn (valued at $1B+ USD)",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "flg_is_valuation_estimate",
+    "description": "Flag indicating if the latest valuation is an estimate",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "flg_is_vcbacked",
+    "description": "Flag indicating if the company is VC-backed",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "flg_is_verified",
+    "description": "Flag indicating if the entity is verified",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "fundings",
+    "description": "Array of all funding rounds and exit events for this entity; use for raised/funding queries",
+    "data_type": "ARRAY<STRUCT<id INT64, amount INT64, currency STRING, amount_eur FLOAT64, amount_usd FLOAT64, year INT64, month INT64, week INT64, week_year INT64, round STRING, standardised_round_label STRING, flg_is_verified BOOL, flg_is_funding_round BOOL, flg_is_vc_round BOOL, flg_is_vc_backed_round BOOL, flg_is_pe_round BOOL, flg_is_exit BOOL, valuation_eur FLOAT64, valuation_usd FLOAT64, funding_investors ARRAY<STRUCT<bobject_investor_id INT64, flg_is_lead_investor BOOL>>, multiples STRUCT<ev_revenue_multiple FLOAT64, ev_ebitda_multiple FLOAT64, ev_profit_multiple FLOAT64>, quarter STRING, timecreate TIMESTAMP, timeupdate TIMESTAMP>>"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "fundings.amount",
+    "description": "Amount of funding in original currency",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "fundings.amount_eur",
+    "description": "Amount of funding converted to EUR",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "fundings.amount_usd",
+    "description": "Amount of funding converted to USD",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "fundings.currency",
+    "description": "Currency of the funding amount",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "fundings.flg_is_exit",
+    "description": "Flag indicating whether this is an exit event (acquisition, IPO, buyout, SPAC IPO)",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "fundings.flg_is_funding_round",
+    "description": "Flag indicating whether this is a funding round (true) or exit event (false)",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "fundings.flg_is_pe_round",
+    "description": "Flag indicating whether this is a private equity round (BUYOUT or GROWTH EQUITY NON VC)",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "fundings.flg_is_vc_backed_round",
+    "description": "Flag indicating whether the round is considered a VC-backed defining round",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "fundings.flg_is_vc_round",
+    "description": "Flag indicating whether this is a venture capital round",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "fundings.flg_is_verified",
+    "description": "Flag indicating whether the funding record is verified",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "fundings.funding_investors",
+    "description": "Array of investors involved in this funding event",
+    "data_type": "ARRAY<STRUCT<bobject_investor_id INT64, flg_is_lead_investor BOOL>>"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "fundings.funding_investors.bobject_investor_id",
+    "description": "Investor entity identifier (entities_iu.id)",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "fundings.funding_investors.flg_is_lead_investor",
+    "description": "Flag indicating whether the investor is a lead investor",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "fundings.id",
+    "description": "Unique identifier for the funding event",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "fundings.month",
+    "description": "Month the funding occurred (1-12)",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "fundings.multiples",
+    "description": "EV multiples for this funding round (valuation / company KPI at time of round); NULL if KPI data unavailable",
+    "data_type": "STRUCT<ev_revenue_multiple FLOAT64, ev_ebitda_multiple FLOAT64, ev_profit_multiple FLOAT64>"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "fundings.multiples.ev_ebitda_multiple",
+    "description": "EV/EBITDA multiple (round valuation USD / annual EBITDA USD)",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "fundings.multiples.ev_profit_multiple",
+    "description": "EV/Profit multiple (round valuation USD / annual profit USD)",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "fundings.multiples.ev_revenue_multiple",
+    "description": "EV/Revenue multiple (round valuation USD / annual revenue USD)",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "fundings.quarter",
+    "description": "Calendar quarter (Q1-Q4) of the funding",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "fundings.round",
+    "description": "Type of funding round / event label",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "fundings.standardised_round_label",
+    "description": "Standardised label for the funding round",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "fundings.timecreate",
+    "description": "Timestamp when the funding record was created",
+    "data_type": "TIMESTAMP"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "fundings.timeupdate",
+    "description": "Timestamp when the funding record was last updated",
+    "data_type": "TIMESTAMP"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "fundings.valuation_eur",
+    "description": "Company valuation at this funding round in EUR",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "fundings.valuation_usd",
+    "description": "Company valuation at this funding round in USD",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "fundings.week",
+    "description": "Week the funding occurred",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "fundings.week_year",
+    "description": "Year and week of the funding",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "fundings.year",
+    "description": "Year the funding occurred",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "growth_stage",
+    "description": "Numeric ID of the growth stage (1–6). See growth_stage_desc for the label. Derived from fund_stage_manual when available, falling back to fund_stage.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "growth_stage_desc",
+    "description": "Growth stage label sourced from company_growth_stages seed via fund_stage_manual\n(preferred) or fund_stage. Stage assignment logic lives in the production database.\nProduction literal values (use these exact strings when filtering):\n- 'Seed' (growth_stage = 1)\n- 'Early Growth' (growth_stage = 2)\n- 'Breakout Stage' (growth_stage = 6)\n- 'Late Growth' (growth_stage = 3)\n- 'Mature' (growth_stage = 4): companies founded before 1990\n- 'Not meaningful' (growth_stage = 5): stage not applicable or indeterminate\n",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "id",
+    "description": "Entity id (bobject id)",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "image",
+    "description": "Entity profile image URL",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "income_stream",
+    "description": "Array of income streams; each has id and name",
+    "data_type": "ARRAY<STRUCT<id INT64, name STRING>>"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "income_stream.id",
+    "description": "Income stream identifier",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "income_stream.name",
+    "description": "Income stream name",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "industries",
+    "description": "Array of industries (categories); each has id and name",
+    "data_type": "ARRAY<STRUCT<id INT64, name STRING>>"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "industries.id",
+    "description": "Industry/category identifier",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "industries.name",
+    "description": "Industry/category name",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "instagram",
+    "description": "Entity Instagram handle",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "latest_market_cap_eur",
+    "description": "Most recent market capitalisation in EUR (public companies only); NULL otherwise",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "latest_market_cap_usd",
+    "description": "Most recent market capitalisation in USD (approx; derived from latest_market_cap_eur * 1.1); NULL otherwise",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "latest_valuation_eur",
+    "description": "Latest known valuation in EUR (company worth, not money raised)",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "latest_valuation_usd",
+    "description": "Latest known valuation in USD (company worth, not money raised)",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "launch_month",
+    "description": "Month the entity was launched",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "launch_year",
+    "description": "Year the entity was launched",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "linkedin",
+    "description": "Entity LinkedIn URL",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "locations",
+    "description": "Array of entity locations; each has id, city, state, country, continent, city_region, country_region (with id/unique_id variants), lat, lon, flg_is_hq, flg_is_founding",
+    "data_type": "ARRAY<STRUCT<id INT64, city STRING, state STRING, country STRING, continent STRING, city_region ARRAY<STRING>, country_region ARRAY<STRING>, city_id INT64, state_id INT64, country_id INT64, continent_id INT64, city_unique_id INT64, state_unique_id INT64, country_unique_id INT64, continent_unique_id INT64, city_region_ids ARRAY<INT64>, country_region_ids ARRAY<INT64>, city_region_unique_ids ARRAY<INT64>, country_region_unique_ids ARRAY<INT64>, lat NUMERIC, lon NUMERIC, flg_is_hq BOOL, flg_is_founding BOOL>>"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "locations.city",
+    "description": "City name",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "locations.city_id",
+    "description": "Canonical city id from param_hq_locations. Joins dim_locations_iu.id where location_type='city'. NULL when the entity is only known at state/country/continent level.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "locations.city_region",
+    "description": "Array of region names the city belongs to (e.g., Nordic, DACH, MENA). Ordered by source region id; positionally parallel to city_region_ids and city_region_unique_ids.",
+    "data_type": "ARRAY<STRING>"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "locations.city_region_ids",
+    "description": "Array of region ids (regions.id) the city belongs to. Ordered by region id; positionally parallel to city_region and city_region_unique_ids.",
+    "data_type": "ARRAY<INT64>"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "locations.city_region_unique_ids",
+    "description": "Array of dim_locations_iu.unique_id values for city_region rows (each element = city_region_ids[i] * 10 + 5). Positionally parallel to city_region and city_region_ids.",
+    "data_type": "ARRAY<INT64>"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "locations.city_unique_id",
+    "description": "Pre-computed dim_locations_iu.unique_id for the city (city_id * 10 + 1). Joins dim_locations_iu.unique_id directly with no type filter required.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "locations.continent",
+    "description": "Continent name",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "locations.continent_id",
+    "description": "Canonical continent id from param_hq_locations. Joins dim_locations_iu.id where location_type='continent'.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "locations.continent_unique_id",
+    "description": "Pre-computed dim_locations_iu.unique_id for the continent (continent_id * 10 + 4).",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "locations.country",
+    "description": "Country name",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "locations.country_id",
+    "description": "Canonical country id from param_hq_locations. Joins dim_locations_iu.id where location_type='country'.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "locations.country_region",
+    "description": "Array of region names the country belongs to (e.g., Nordic, DACH, MENA). Ordered by source region id; positionally parallel to country_region_ids and country_region_unique_ids.",
+    "data_type": "ARRAY<STRING>"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "locations.country_region_ids",
+    "description": "Array of region ids (regions.id) the country belongs to. Ordered by region id; positionally parallel to country_region and country_region_unique_ids.",
+    "data_type": "ARRAY<INT64>"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "locations.country_region_unique_ids",
+    "description": "Array of dim_locations_iu.unique_id values for country_region rows (each element = country_region_ids[i] * 10 + 6). Positionally parallel to country_region and country_region_ids.",
+    "data_type": "ARRAY<INT64>"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "locations.country_unique_id",
+    "description": "Pre-computed dim_locations_iu.unique_id for the country (country_id * 10 + 3).",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "locations.flg_is_founding",
+    "description": "Flag indicating this location is the founding location",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "locations.flg_is_hq",
+    "description": "Flag indicating this location is the headquarters",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "locations.id",
+    "description": "Primary key of the location record in bobjects_hq_locations. Identifies the entity↔location membership row, not a foreign key to dim_locations_iu.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "locations.lat",
+    "description": "Latitude coordinate",
+    "data_type": "NUMERIC"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "locations.lon",
+    "description": "Longitude coordinate",
+    "data_type": "NUMERIC"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "locations.state",
+    "description": "State/province name",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "locations.state_id",
+    "description": "Canonical state id from param_hq_locations. Joins dim_locations_iu.id where location_type='state'.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "locations.state_unique_id",
+    "description": "Pre-computed dim_locations_iu.unique_id for the state (state_id * 10 + 2).",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "market_cap_month",
+    "description": "Month of the latest market cap record (1-12)",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "market_cap_year",
+    "description": "Year of the latest market cap record",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "month_became_unicorn",
+    "description": "Month when the company first achieved unicorn status",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "name",
+    "description": "Name of the entity",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "organization_subtype",
+    "description": "Organization classification when entity_type = organization. NULL for persons.\nAvailable values: \"company\", \"university\", \"gov_ngo\", \"investor\"\n",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "ownerships",
+    "description": "Array of ownership types; each has id and name",
+    "data_type": "ARRAY<STRUCT<id INT64, name STRING>>"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "ownerships.id",
+    "description": "Ownership type identifier",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "ownerships.name",
+    "description": "Ownership type name",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "patents_count",
+    "description": "Number of patents associated with this entity; NULL if none on record",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "revenues",
+    "description": "Array of historical fiscal-year revenues; each has year, value_eur, value_usd, flg_is_estimate",
+    "data_type": "ARRAY<STRUCT<year INT64, value_eur INT64, value_usd FLOAT64, flg_is_estimate BOOL>>"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "revenues.flg_is_estimate",
+    "description": "Flag indicating if this revenue figure is an estimate or an actual filing",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "revenues.value_eur",
+    "description": "Revenue amount in EUR",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "revenues.value_usd",
+    "description": "Revenue amount in USD (approx; derived from value_eur * 1.1)",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "revenues.year",
+    "description": "Fiscal year of the revenue record",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "sdgs",
+    "description": "Array of Sustainable Development Goals; each has id and name",
+    "data_type": "ARRAY<STRUCT<id INT64, name STRING>>"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "sdgs.id",
+    "description": "Sustainable Development Goal identifier",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "sdgs.name",
+    "description": "Sustainable Development Goal name (title-cased)",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "sectors",
+    "description": "Array of sectors (grey tags); each has id and name",
+    "data_type": "ARRAY<STRUCT<id INT64, name STRING>>"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "sectors.id",
+    "description": "Sector identifier",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "sectors.name",
+    "description": "Sector name",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "similarweb_3_months_growth",
+    "description": "SimilarWeb 3-month growth metric",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "similarweb_traffic",
+    "description": "SimilarWeb traffic metric",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "sub_industries",
+    "description": "Array of sub-industries; each has id and name",
+    "data_type": "ARRAY<STRUCT<id INT64, name STRING>>"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "sub_industries.id",
+    "description": "Sub-industry/sub-category identifier",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "sub_industries.name",
+    "description": "Sub-industry/sub-category name",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "summary",
+    "description": "Short AI-generated summary of the entity (sourced from business_objects.summary)",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "tagline",
+    "description": "Tagline (short description) of the entity",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "technologies",
+    "description": "Array of technologies; each has id and name",
+    "data_type": "ARRAY<STRUCT<id INT64, name STRING>>"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "technologies.id",
+    "description": "Technology identifier",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "technologies.name",
+    "description": "Technology name",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "techstack_categories",
+    "description": "Array of tech stack categories; each has id and name",
+    "data_type": "ARRAY<STRUCT<id INT64, name STRING>>"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "techstack_categories.id",
+    "description": "Tech stack category identifier",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "techstack_categories.name",
+    "description": "Tech stack category name",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "timecreate",
+    "description": "Timestamp when the entity was created",
+    "data_type": "TIMESTAMP"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "total_funding_eur",
+    "description": "Total funding raised (sum of funding rounds) in EUR",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "total_funding_usd",
+    "description": "Total funding raised (sum of funding rounds) in USD",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "total_vc_funding_eur",
+    "description": "Total VC funding raised in EUR",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "total_vc_funding_usd",
+    "description": "Total VC funding raised in USD",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "twitter",
+    "description": "Entity Twitter (X) URL",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "unicorn_type",
+    "description": "Unicorn classification; values \"unicorn\", \"decacorn\", \"centacorn\", \"gigacorn\"",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "uuid",
+    "description": "Entity uuid",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "valuation_month",
+    "description": "Month of the latest valuation (1-12)",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "valuation_year",
+    "description": "Year of the latest valuation",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "valuations",
+    "description": "Array of historical valuations; each has year, month, value_eur, value_usd, flg_is_estimate",
+    "data_type": "ARRAY<STRUCT<year INT64, month INT64, value_eur FLOAT64, value_usd FLOAT64, flg_is_estimate BOOL>>"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "valuations.flg_is_estimate",
+    "description": "Flag indicating if this valuation is an estimate (true) or actual (false)",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "valuations.month",
+    "description": "Month of the valuation (1-12)",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "valuations.value_eur",
+    "description": "Valuation amount in EUR",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "valuations.value_usd",
+    "description": "Valuation amount in USD",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "valuations.year",
+    "description": "Year of the valuation",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "verify_bobject_id",
+    "description": "Id of the entity that verified this record",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "website",
+    "description": "Entity website URL",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "website_domain",
+    "description": "Entity website domain",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "year_became_thoroughbred",
+    "description": "Year when the company first reached >= $100M revenue (USD) (based on fiscal-year revenue; may be NULL if revenue is unavailable)",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "year_became_unicorn",
+    "description": "Year when the company first achieved unicorn status",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "year_became_vc_backed",
+    "description": "Year when the company first received VC backing (earliest VC round year); NULL if never VC-backed",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "entities_iu",
+    "column_name": "year_of_exit",
+    "description": "The earliest year in which the entity had an exit round; NULL if never exited",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "funding_iu",
+    "column_name": "amount",
+    "description": "Amount of funding in original currency",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "funding_iu",
+    "column_name": "amount_eur",
+    "description": "Amount of funding converted to EUR",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "funding_iu",
+    "column_name": "amount_usd",
+    "description": "Amount of funding converted to USD",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "funding_iu",
+    "column_name": "currency",
+    "description": "Currency of the funding amount",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "funding_iu",
+    "column_name": "entity_id",
+    "description": "Entity (company) receiving funding; join with entities_iu.id",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "funding_iu",
+    "column_name": "flg_is_exit",
+    "description": "Flag indicating if this is an exit event (acquisition, IPO, buyout, SPAC IPO)",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "funding_iu",
+    "column_name": "flg_is_funding_round",
+    "description": "Flag indicating if this is a funding round (true) or exit event (false)",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "funding_iu",
+    "column_name": "flg_is_pe_round",
+    "description": "Flag indicating whether this is a private equity round (BUYOUT or GROWTH EQUITY NON VC)",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "funding_iu",
+    "column_name": "flg_is_vc_backed_round",
+    "description": "Flag indicating whether the round is considered a VC-backed defining round",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "funding_iu",
+    "column_name": "flg_is_vc_round",
+    "description": "Flag indicating if this is a venture capital round",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "funding_iu",
+    "column_name": "flg_is_verified",
+    "description": "Flag indicating if the funding information is verified",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "funding_iu",
+    "column_name": "funding_investors",
+    "description": "Array of investors; each has bobject_investor_id, flg_is_lead_investor",
+    "data_type": "ARRAY<STRUCT<bobject_investor_id INT64, flg_is_lead_investor BOOL>>"
+  },
+  {
+    "table_name": "funding_iu",
+    "column_name": "funding_investors.bobject_investor_id",
+    "description": "Investor entity identifier (entities_iu.id)",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "funding_iu",
+    "column_name": "funding_investors.flg_is_lead_investor",
+    "description": "Flag indicating whether the investor is a lead investor",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "funding_iu",
+    "column_name": "id",
+    "description": "Unique identifier for the funding event",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "funding_iu",
+    "column_name": "month",
+    "description": "Month the funding occurred (1-12)",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "funding_iu",
+    "column_name": "multiples",
+    "description": "EV multiples for this funding round (valuation / company KPI at time of round); NULL if KPI data unavailable",
+    "data_type": "STRUCT<ev_revenue_multiple FLOAT64, ev_ebitda_multiple FLOAT64, ev_profit_multiple FLOAT64>"
+  },
+  {
+    "table_name": "funding_iu",
+    "column_name": "multiples.ev_ebitda_multiple",
+    "description": "EV/EBITDA multiple (round valuation USD / annual EBITDA USD)",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "funding_iu",
+    "column_name": "multiples.ev_profit_multiple",
+    "description": "EV/Profit multiple (round valuation USD / annual profit USD)",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "funding_iu",
+    "column_name": "multiples.ev_revenue_multiple",
+    "description": "EV/Revenue multiple (round valuation USD / annual revenue USD)",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "funding_iu",
+    "column_name": "quarter",
+    "description": "Calendar quarter (Q1-Q4) of the funding",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "funding_iu",
+    "column_name": "round",
+    "description": "Type of funding round",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "funding_iu",
+    "column_name": "standardised_round_label",
+    "description": "Standardised label for the funding round",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "funding_iu",
+    "column_name": "timecreate",
+    "description": "Timestamp when the funding record was created",
+    "data_type": "TIMESTAMP"
+  },
+  {
+    "table_name": "funding_iu",
+    "column_name": "timeupdate",
+    "description": "Timestamp when the funding record was last updated",
+    "data_type": "TIMESTAMP"
+  },
+  {
+    "table_name": "funding_iu",
+    "column_name": "valuation_eur",
+    "description": "Company valuation at this funding round in EUR",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "funding_iu",
+    "column_name": "valuation_usd",
+    "description": "Company valuation at this funding round in USD",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "funding_iu",
+    "column_name": "week",
+    "description": "Week the funding occurred",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "funding_iu",
+    "column_name": "week_year",
+    "description": "Year and week of the funding",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "funding_iu",
+    "column_name": "year",
+    "description": "Year the funding occurred",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "vc_funding_iu",
+    "column_name": "amount",
+    "description": "Amount of funding in original currency",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "vc_funding_iu",
+    "column_name": "amount_eur",
+    "description": "Amount of funding converted to EUR",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "vc_funding_iu",
+    "column_name": "amount_usd",
+    "description": "Amount of funding converted to USD",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "vc_funding_iu",
+    "column_name": "currency",
+    "description": "Currency of the funding amount",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "vc_funding_iu",
+    "column_name": "entity_id",
+    "description": "Entity (company) receiving funding",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "vc_funding_iu",
+    "column_name": "flg_is_exit",
+    "description": "Flag indicating if this is an exit event",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "vc_funding_iu",
+    "column_name": "flg_is_funding_round",
+    "description": "Flag indicating if this is a funding round",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "vc_funding_iu",
+    "column_name": "flg_is_vc_round",
+    "description": "Flag indicating if this is a venture capital round",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "vc_funding_iu",
+    "column_name": "flg_is_verified",
+    "description": "Flag indicating if the funding information is verified",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "vc_funding_iu",
+    "column_name": "funding_investors",
+    "description": "Array of investors in this round",
+    "data_type": "ARRAY<STRUCT<bobject_investor_id INT64, flg_is_lead_investor BOOL>>"
+  },
+  {
+    "table_name": "vc_funding_iu",
+    "column_name": "funding_investors.bobject_investor_id",
+    "description": "",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "vc_funding_iu",
+    "column_name": "funding_investors.flg_is_lead_investor",
+    "description": "",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "vc_funding_iu",
+    "column_name": "id",
+    "description": "Unique identifier for the funding event",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "vc_funding_iu",
+    "column_name": "month",
+    "description": "Month the funding occurred",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "vc_funding_iu",
+    "column_name": "quarter",
+    "description": "Calendar quarter of the funding",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "vc_funding_iu",
+    "column_name": "round",
+    "description": "Type of funding round",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "vc_funding_iu",
+    "column_name": "standardised_round_label",
+    "description": "Standardised label for the funding round",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "vc_funding_iu",
+    "column_name": "timecreate",
+    "description": "Timestamp when the record was created",
+    "data_type": "TIMESTAMP"
+  },
+  {
+    "table_name": "vc_funding_iu",
+    "column_name": "timeupdate",
+    "description": "Timestamp when the record was last updated",
+    "data_type": "TIMESTAMP"
+  },
+  {
+    "table_name": "vc_funding_iu",
+    "column_name": "valuation_eur",
+    "description": "Company valuation at this round in EUR",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "vc_funding_iu",
+    "column_name": "valuation_usd",
+    "description": "Company valuation at this round in USD",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "vc_funding_iu",
+    "column_name": "week",
+    "description": "Week the funding occurred",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "vc_funding_iu",
+    "column_name": "week_year",
+    "description": "Year and week of the funding",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "vc_funding_iu",
+    "column_name": "year",
+    "description": "Year the funding occurred",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "investors_iu",
+    "column_name": "aum_eur",
+    "description": "Assets under management in EUR (most recent record); NULL if unavailable",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "investors_iu",
+    "column_name": "aum_usd",
+    "description": "Assets under management in USD (approx; derived from aum_eur × USD rate); NULL if unavailable",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "investors_iu",
+    "column_name": "bobject_investor_id",
+    "description": "Unique identifier for the investor",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "investors_iu",
+    "column_name": "country_experience",
+    "description": "Array of countries where portfolio companies are headquartered",
+    "data_type": "ARRAY<STRING>"
+  },
+  {
+    "table_name": "investors_iu",
+    "column_name": "deal_structure",
+    "description": "Array of deal structure/security types; each has id and name",
+    "data_type": "ARRAY<STRUCT<id INT64, name STRING>>"
+  },
+  {
+    "table_name": "investors_iu",
+    "column_name": "deal_structure.id",
+    "description": "Deal structure identifier (2=convertible debt, 3=venture debt, 4=mezzanine, 5=equity (minority), 6=equity (majority))",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "investors_iu",
+    "column_name": "deal_structure.name",
+    "description": "Deal structure label",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "investors_iu",
+    "column_name": "entities_invested_in",
+    "description": "Array of entity IDs (companies) the investor has invested in",
+    "data_type": "ARRAY<INT64>"
+  },
+  {
+    "table_name": "investors_iu",
+    "column_name": "funds",
+    "description": "Array of funds managed by this investor; each has fund_id, fund_name, amount, currency, fund_type, flg_is_closed, fund_date, source_url. Ordered by fund_date descending.",
+    "data_type": "ARRAY<STRUCT<fund_id INT64, fund_name STRING, amount INT64, currency STRING, fund_type INT64, flg_is_closed BOOL, fund_date STRING, source_url STRING>>"
+  },
+  {
+    "table_name": "investors_iu",
+    "column_name": "funds.amount",
+    "description": "Fund size in original currency",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "investors_iu",
+    "column_name": "funds.currency",
+    "description": "Currency of the fund amount",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "investors_iu",
+    "column_name": "funds.flg_is_closed",
+    "description": "Flag indicating whether the fund is closed",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "investors_iu",
+    "column_name": "funds.fund_date",
+    "description": "Date associated with the fund (typically the close or announcement date)",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "investors_iu",
+    "column_name": "funds.fund_id",
+    "description": "Unique identifier for the fund (bobjects_funds.id)",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "investors_iu",
+    "column_name": "funds.fund_name",
+    "description": "Name of the fund",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "investors_iu",
+    "column_name": "funds.fund_type",
+    "description": "Type/category of the fund",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "investors_iu",
+    "column_name": "funds.source_url",
+    "description": "External URL of the source news article / press release announcing the fund (feed_items.link); NULL when no feed item is linked",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "investors_iu",
+    "column_name": "industry_experience",
+    "description": "Investor's industry experience; each has id and name",
+    "data_type": "ARRAY<STRUCT<id INT64, name STRING>>"
+  },
+  {
+    "table_name": "investors_iu",
+    "column_name": "industry_experience.id",
+    "description": "Industry/category identifier",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "investors_iu",
+    "column_name": "industry_experience.name",
+    "description": "Industry/category name",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "investors_iu",
+    "column_name": "investment_stages",
+    "description": "Array of investment stage labels (derived from Dealroom flags)",
+    "data_type": "ARRAY<STRING>"
+  },
+  {
+    "table_name": "investors_iu",
+    "column_name": "investor_types",
+    "description": "Array of investor type labels (derived from Dealroom flags)",
+    "data_type": "ARRAY<STRING>"
+  },
+  {
+    "table_name": "investors_iu",
+    "column_name": "known_limited_partners",
+    "description": "Array of investor entity IDs that are known limited partners for this investor (if applicable)",
+    "data_type": "ARRAY<INT64>"
+  },
+  {
+    "table_name": "investors_iu",
+    "column_name": "lp_investments",
+    "description": "Array of investment/fund entity IDs this investor has LP investments in (if applicable)",
+    "data_type": "ARRAY<INT64>"
+  },
+  {
+    "table_name": "investors_iu",
+    "column_name": "max_deal_size",
+    "description": "Maximum deal size the investor considers",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "investors_iu",
+    "column_name": "min_deal_size",
+    "description": "Minimum deal size the investor considers",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "investors_iu",
+    "column_name": "preferred_round",
+    "description": "The round type this investor most frequently participates in (e.g., Series A, Seed). Uses the manually-set business_objects.preferred_round when present, otherwise falls back to the most common round across the investor's funding participations (see investors_preferred_round)",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "investors_iu",
+    "column_name": "sub_industry_experience",
+    "description": "Array of sub-industries (sub-categories) observed in portfolio; each has id and name",
+    "data_type": "ARRAY<STRUCT<id INT64, name STRING>>"
+  },
+  {
+    "table_name": "investors_iu",
+    "column_name": "sub_industry_experience.id",
+    "description": "Sub-industry/sub-category identifier",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "investors_iu",
+    "column_name": "sub_industry_experience.name",
+    "description": "Sub-industry/sub-category name",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "investors_iu",
+    "column_name": "tags_experience",
+    "description": "Array of sector (grey tag) experience observed in portfolio; each has id and name",
+    "data_type": "ARRAY<STRUCT<id INT64, name STRING>>"
+  },
+  {
+    "table_name": "investors_iu",
+    "column_name": "tags_experience.id",
+    "description": "Sector identifier",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "investors_iu",
+    "column_name": "tags_experience.name",
+    "description": "Sector name",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "investors_iu",
+    "column_name": "total_funding_eur",
+    "description": "Total funding amount (sum across funding rounds) in EUR for deals involving this investor",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "investors_iu",
+    "column_name": "total_funding_usd",
+    "description": "Total funding amount (sum across funding rounds) in USD for deals involving this investor",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "investors_iu",
+    "column_name": "total_investments_count",
+    "description": "Total number of rounds this investor has participated in (count of bobjects_funding_investors rows)",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "people_iu",
+    "column_name": "backgrounds",
+    "description": "Structured data related to professional or personal history",
+    "data_type": "ARRAY<STRUCT<id INT64, name STRING>>"
+  },
+  {
+    "table_name": "people_iu",
+    "column_name": "backgrounds.id",
+    "description": "Background identifier",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "people_iu",
+    "column_name": "backgrounds.name",
+    "description": "Background name",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "people_iu",
+    "column_name": "flg_is_founder",
+    "description": "Flag indicating if the person is a founder (based on companies_founders title matching)",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "people_iu",
+    "column_name": "flg_is_promising_founder",
+    "description": "Flag indicating if the person is a promising founder",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "people_iu",
+    "column_name": "flg_is_serial_founder",
+    "description": "Flag indicating if the person is a serial founder",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "people_iu",
+    "column_name": "flg_is_strong_founder",
+    "description": "Flag indicating if the person is a strong founder",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "people_iu",
+    "column_name": "flg_is_super_founder",
+    "description": "Flag indicating if the person is a super founder",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "people_iu",
+    "column_name": "founded_companies_total_funding_eur",
+    "description": "Total funding raised (EUR) across all companies founded by this person; NULL if not a founder or no funding data",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "people_iu",
+    "column_name": "founded_companies_total_funding_usd",
+    "description": "Total funding raised (USD) across all companies founded by this person; NULL if not a founder or no funding data",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "people_iu",
+    "column_name": "founded_entities_ids",
+    "description": "Array of entity IDs of companies founded by this person",
+    "data_type": "ARRAY<INT64>"
+  },
+  {
+    "table_name": "people_iu",
+    "column_name": "founder_score",
+    "description": "People Signal rating score for the founder",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "people_iu",
+    "column_name": "gender",
+    "description": "Numerical representation of gender",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "people_iu",
+    "column_name": "gender_desc",
+    "description": "Textual description of gender",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "people_iu",
+    "column_name": "id",
+    "description": "Unique identifier for the person",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "people_iu",
+    "column_name": "image",
+    "description": "Profile image URL",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "people_iu",
+    "column_name": "name",
+    "description": "Name of the person",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "people_iu",
+    "column_name": "universities",
+    "description": "Array of university education; each has education_id, bobject_university_id, degree, majors, year_start, year_end",
+    "data_type": "ARRAY<STRUCT<education_id INT64, bobject_university_id INT64, degree STRUCT<id INT64, name STRING, years INT64>, majors ARRAY<STRUCT<id INT64, name STRING>>, year_start INT64, year_end INT64>>"
+  },
+  {
+    "table_name": "people_iu",
+    "column_name": "universities.bobject_university_id",
+    "description": "University entity identifier (entities_iu.id where organization_subtype = 'university')",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "people_iu",
+    "column_name": "universities.degree",
+    "description": "Degree as a struct with id, name, years",
+    "data_type": "STRUCT<id INT64, name STRING, years INT64>"
+  },
+  {
+    "table_name": "people_iu",
+    "column_name": "universities.degree.id",
+    "description": "Degree identifier",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "people_iu",
+    "column_name": "universities.degree.name",
+    "description": "Degree name",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "people_iu",
+    "column_name": "universities.degree.years",
+    "description": "Number of years spent pursuing the degree",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "people_iu",
+    "column_name": "universities.education_id",
+    "description": "Stable identifier for the person-university enrollment record (sourced from src_dealroom.bobjects_universities.id). Use this as the join key for downstream tables that link education records to majors.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "people_iu",
+    "column_name": "universities.majors",
+    "description": "Array of majors; each has id and name",
+    "data_type": "ARRAY<STRUCT<id INT64, name STRING>>"
+  },
+  {
+    "table_name": "people_iu",
+    "column_name": "universities.majors.id",
+    "description": "Major identifier",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "people_iu",
+    "column_name": "universities.majors.name",
+    "description": "Major name",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "people_iu",
+    "column_name": "universities.year_end",
+    "description": "Year the person finished their studies at the university",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "people_iu",
+    "column_name": "universities.year_start",
+    "description": "Year the person started their studies at the university",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "people_organizations_iu",
+    "column_name": "entity_id",
+    "description": "Organization identifier (references entities_iu.id where entity_type = 'organization')",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "people_organizations_iu",
+    "column_name": "flg_is_executive",
+    "description": "Flag indicating if the person holds an executive role in this organization",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "people_organizations_iu",
+    "column_name": "flg_is_founder",
+    "description": "Flag indicating if the person is a founder of the organization",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "people_organizations_iu",
+    "column_name": "flg_is_partner",
+    "description": "Flag indicating if the person holds a partner role in this organization",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "people_organizations_iu",
+    "column_name": "flg_is_past",
+    "description": "Flag indicating if this is a past position",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "people_organizations_iu",
+    "column_name": "id",
+    "description": "Unique identifier for the person-organization relationship",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "people_organizations_iu",
+    "column_name": "month_end",
+    "description": "Month when the person left (1-12, NULL if current)",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "people_organizations_iu",
+    "column_name": "month_start",
+    "description": "Month when the person started (1-12)",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "people_organizations_iu",
+    "column_name": "person_id",
+    "description": "Person identifier (references entities_iu.id where entity_type = 'person')",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "people_organizations_iu",
+    "column_name": "raw_title",
+    "description": "Raw, unstructured title text as originally entered",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "people_organizations_iu",
+    "column_name": "titles",
+    "description": "Array of structured job titles; each has id and standardized name",
+    "data_type": "ARRAY<STRUCT<id INT64, name STRING>>"
+  },
+  {
+    "table_name": "people_organizations_iu",
+    "column_name": "titles.id",
+    "description": "Title identifier from the titles taxonomy",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "people_organizations_iu",
+    "column_name": "titles.name",
+    "description": "Standardized title name (e.g., CEO, CTO, Software Engineer)",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "people_organizations_iu",
+    "column_name": "year_end",
+    "description": "Year when the person left (NULL if current)",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "people_organizations_iu",
+    "column_name": "year_start",
+    "description": "Year when the person started in this organization",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "timeseries_data_iu",
+    "column_name": "ebitda_usd",
+    "description": "EBITDA in USD (forward-filled)",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "timeseries_data_iu",
+    "column_name": "employees",
+    "description": "Full-time equivalent employee count (forward-filled)",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "timeseries_data_iu",
+    "column_name": "entity_id",
+    "description": "Entity (company) identifier; join with entities_iu.id",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "timeseries_data_iu",
+    "column_name": "market_cap_usd",
+    "description": "Market capitalisation in USD (forward-filled; public companies only)",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "timeseries_data_iu",
+    "column_name": "revenue_usd",
+    "description": "Revenue in USD (forward-filled)",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "timeseries_data_iu",
+    "column_name": "valuation_usd",
+    "description": "Valuation in USD (forward-filled)",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "timeseries_data_iu",
+    "column_name": "vc_funding_usd",
+    "description": "Sum of VC funding raised in the given year (USD). Sourced from the\nfunding_iu table with flg_is_vc_round = TRUE, which includes all companies.\nThis differs from the vc_funding_iu table, which additionally excludes\noutside-tech sector and mature-stage companies.\n",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "timeseries_data_iu",
+    "column_name": "year",
+    "description": "Calendar year",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "headcount_breakdown_iu",
+    "column_name": "breakdown_type",
+    "description": "Dimension of the split: 'department' or 'country'",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "headcount_breakdown_iu",
+    "column_name": "entity_id",
+    "description": "Entity (company) identifier; join with entities_iu.id",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "headcount_breakdown_iu",
+    "column_name": "item_id",
+    "description": "Identifier of the breakdown item within its breakdown_type:\ndepartment id (param_departments.id) when breakdown_type='department',\ncountry location id (dim_locations_iu.id where location_type='country')\nwhen breakdown_type='country'.\n",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "headcount_breakdown_iu",
+    "column_name": "item_name",
+    "description": "Resolved name of the department or country; NULL if the id has no match",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "headcount_breakdown_iu",
+    "column_name": "month",
+    "description": "Calendar month of the data point (1-12)",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "headcount_breakdown_iu",
+    "column_name": "percentage",
+    "description": "Percentage of the company's headcount attributed to this\ndepartment/country in the period (0-100, as provided by source).\nItems within a period sum to ~100; any shortfall is unattributed\n(\"unknown\"). Use directly for the pie / stacked-area chart.\n",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "headcount_breakdown_iu",
+    "column_name": "period_date",
+    "description": "First day of the data point's month (DATE), for charting on a time axis",
+    "data_type": "DATE"
+  },
+  {
+    "table_name": "headcount_breakdown_iu",
+    "column_name": "year",
+    "description": "Calendar year of the data point",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "web_traffic_iu",
+    "column_name": "entity_id",
+    "description": "Entity (company) identifier; join with entities_iu.id",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "web_traffic_iu",
+    "column_name": "month",
+    "description": "Calendar month of the data point (1-12)",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "web_traffic_iu",
+    "column_name": "period_date",
+    "description": "First day of the data point's month (DATE), for charting on a time axis",
+    "data_type": "DATE"
+  },
+  {
+    "table_name": "web_traffic_iu",
+    "column_name": "visits",
+    "description": "Estimated total website visits in the month (SimilarWeb traffic_users)",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "web_traffic_iu",
+    "column_name": "year",
+    "description": "Calendar year of the data point",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "news_iu",
+    "column_name": "content",
+    "description": "The text body of the news item; may contain rich HTML.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "news_iu",
+    "column_name": "feed_source",
+    "description": "The publication/feed the item came from; contains id, name, link. Null when the item has no source feed.",
+    "data_type": "STRUCT<id INT64, name STRING, link STRING>"
+  },
+  {
+    "table_name": "news_iu",
+    "column_name": "feed_source.id",
+    "description": "Feed source identifier",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "news_iu",
+    "column_name": "feed_source.link",
+    "description": "Feed source homepage URL",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "news_iu",
+    "column_name": "feed_source.name",
+    "description": "Feed source name (the publication, e.g. TechCrunch)",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "news_iu",
+    "column_name": "flg_is_pinned",
+    "description": "True for the single most prominent highlight — the most recent of the pinned top stories. Exactly one row is true when any top story is pinned, otherwise none.",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "news_iu",
+    "column_name": "flg_is_top_story",
+    "description": "True for hand-picked editorial highlights (the curated top stories); false otherwise.",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "news_iu",
+    "column_name": "fundings",
+    "description": "Funding round(s) the item reports on, each with round type, amount (EUR and USD) and date. Empty when the item reports no funding; may contain more than one round.",
+    "data_type": "ARRAY<STRUCT<round_type STRING, amount_eur FLOAT64, amount_usd FLOAT64, deal_date DATE>>"
+  },
+  {
+    "table_name": "news_iu",
+    "column_name": "fundings.amount_eur",
+    "description": "Round amount in EUR. Null when the amount is undisclosed.",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "news_iu",
+    "column_name": "fundings.amount_usd",
+    "description": "Round amount in USD. Null when the amount is undisclosed.",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "news_iu",
+    "column_name": "fundings.deal_date",
+    "description": "Round date, as the first of the month.",
+    "data_type": "DATE"
+  },
+  {
+    "table_name": "news_iu",
+    "column_name": "fundings.round_type",
+    "description": "Funding round type/stage (e.g. Seed, Series A, Acquisition). Null when only an amount is known, with no round.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "news_iu",
+    "column_name": "id",
+    "description": "Raw id from the item's source; unique only within that source. Use unique_id for a table-wide key.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "news_iu",
+    "column_name": "images",
+    "description": "Images attached to the item, primary first; empty when it has none. Each element has an id, a filename and a primary flag; prepend the imgix base (e.g. https://sg-imgs.dealroom.co/<name>) to render.",
+    "data_type": "ARRAY<STRUCT<id INT64, name STRING, flg_is_primary BOOL>>"
+  },
+  {
+    "table_name": "news_iu",
+    "column_name": "images.flg_is_primary",
+    "description": "True for the primary/card image, false for the rest. At most one is primary; the array is ordered primary-first.",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "news_iu",
+    "column_name": "images.id",
+    "description": "Image ID.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "news_iu",
+    "column_name": "images.name",
+    "description": "Image filename. Prepend the imgix base to form the URL.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "news_iu",
+    "column_name": "links",
+    "description": "External source URL(s) for the item; empty when it has no external source.",
+    "data_type": "ARRAY<STRING>"
+  },
+  {
+    "table_name": "news_iu",
+    "column_name": "news_types",
+    "description": "Topic classifications for the item (e.g. funding, acquisition); each has id, name. Empty when the item is unclassified.",
+    "data_type": "ARRAY<STRUCT<id INT64, name STRING>>"
+  },
+  {
+    "table_name": "news_iu",
+    "column_name": "news_types.id",
+    "description": "News type identifier",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "news_iu",
+    "column_name": "news_types.name",
+    "description": "News type name",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "news_iu",
+    "column_name": "pub_datetime",
+    "description": "Publication timestamp (UTC).",
+    "data_type": "TIMESTAMP"
+  },
+  {
+    "table_name": "news_iu",
+    "column_name": "related_entities",
+    "description": "Dealroom entities this item is about; each has entity_id, name, website, flg_is_target, sector, hq_country. Join entity_id to entities_iu.id to fetch all news for an entity.",
+    "data_type": "ARRAY<STRUCT<entity_id INT64, name STRING, website STRING, flg_is_target BOOL, sector STRING, hq_country STRING>>"
+  },
+  {
+    "table_name": "news_iu",
+    "column_name": "related_entities.entity_id",
+    "description": "Entity identifier (join with entities_iu.id)",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "news_iu",
+    "column_name": "related_entities.flg_is_target",
+    "description": "True for the entity the item is primarily about (its subject), as opposed to entities merely mentioned.",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "news_iu",
+    "column_name": "related_entities.hq_country",
+    "description": "HQ country of the entity",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "news_iu",
+    "column_name": "related_entities.name",
+    "description": "Entity name",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "news_iu",
+    "column_name": "related_entities.sector",
+    "description": "Primary (alphabetically first) sector of the entity",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "news_iu",
+    "column_name": "related_entities.website",
+    "description": "Entity website URL",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "news_iu",
+    "column_name": "slug",
+    "description": "Unique, URL-friendly identifier.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "news_iu",
+    "column_name": "source",
+    "description": "Kind of item: 'feed_item' = AI-summarised syndicated article; 'note' = editorially curated in-house note.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "news_iu",
+    "column_name": "timecreate",
+    "description": "When the underlying item was created (source timestamp).",
+    "data_type": "TIMESTAMP"
+  },
+  {
+    "table_name": "news_iu",
+    "column_name": "timeupdate",
+    "description": "When the underlying item was last updated (source timestamp).",
+    "data_type": "TIMESTAMP"
+  },
+  {
+    "table_name": "news_iu",
+    "column_name": "title",
+    "description": "Headline of the news item.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "news_iu",
+    "column_name": "unique_id",
+    "description": "Stable identifier, unique across the whole table — use it as the primary/join key. (The raw id repeats across origins, so this is a collision-free surrogate.)",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "jobs_iu",
+    "column_name": "city",
+    "description": "City of the job location.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "jobs_iu",
+    "column_name": "contract_type",
+    "description": "Free-text contract type (e.g. internship, full-time). Sparse; unrelated to the unused param_job_contracts.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "jobs_iu",
+    "column_name": "country",
+    "description": "Country of the job location.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "jobs_iu",
+    "column_name": "currency",
+    "description": "Currency of the salary range. Sparse.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "jobs_iu",
+    "column_name": "date_posted",
+    "description": "Timestamp when the job was posted.",
+    "data_type": "TIMESTAMP"
+  },
+  {
+    "table_name": "jobs_iu",
+    "column_name": "department",
+    "description": "Department/function of the role (e.g. sales, engineering). Sparse.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "jobs_iu",
+    "column_name": "entity_id",
+    "description": "Hiring entity (company); join with entities_iu.id.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "jobs_iu",
+    "column_name": "expired_date",
+    "description": "Timestamp when the listing expires (provider-flagged or inferred at +3 months); NULL when unknown.",
+    "data_type": "TIMESTAMP"
+  },
+  {
+    "table_name": "jobs_iu",
+    "column_name": "formatted_location",
+    "description": "Human-readable full location string as provided by the source.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "jobs_iu",
+    "column_name": "id",
+    "description": "Unique identifier for the job opening (source job id).",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "jobs_iu",
+    "column_name": "job_type",
+    "description": "Job type name from param_job_types (e.g. engineering, sales); NULL when untyped.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "jobs_iu",
+    "column_name": "latitude",
+    "description": "Latitude of the job location.",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "jobs_iu",
+    "column_name": "longitude",
+    "description": "Longitude of the job location.",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "jobs_iu",
+    "column_name": "post_language",
+    "description": "Language code of the posting.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "jobs_iu",
+    "column_name": "salary_max",
+    "description": "Maximum salary in the source currency. Sparse — only a small minority of rows have a value.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "jobs_iu",
+    "column_name": "salary_min",
+    "description": "Minimum salary in the source currency. Sparse — only a small minority of rows have a value.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "jobs_iu",
+    "column_name": "source",
+    "description": "Provider that the listing comes from (e.g. 'Predict Leads', 'Welcome To The Jungle', 'TheHub.io').",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "jobs_iu",
+    "column_name": "title",
+    "description": "Job title.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "jobs_iu",
+    "column_name": "url",
+    "description": "URL of the job posting.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "dim_lists_iu",
+    "column_name": "api_auth_id",
+    "description": "API authentication ID associated with the list",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "dim_lists_iu",
+    "column_name": "content",
+    "description": "Raw content field of the list",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "dim_lists_iu",
+    "column_name": "description",
+    "description": "Full description of the list",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "dim_lists_iu",
+    "column_name": "entities_count",
+    "description": "Number of distinct entities (companies) included in this list",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "dim_lists_iu",
+    "column_name": "entity_ids",
+    "description": "Array of entities included in this list; ordered by timecreated ascending",
+    "data_type": "ARRAY<STRUCT<id INT64, entity_id INT64, timecreated TIMESTAMP, timeupdated TIMESTAMP>>"
+  },
+  {
+    "table_name": "dim_lists_iu",
+    "column_name": "entity_ids.entity_id",
+    "description": "Entity ID of the entity included in the list (join with entities_iu.id)",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "dim_lists_iu",
+    "column_name": "entity_ids.id",
+    "description": "lists_bobjects row identifier",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "dim_lists_iu",
+    "column_name": "entity_ids.timecreated",
+    "description": "Timestamp when the entity was added to the list",
+    "data_type": "TIMESTAMP"
+  },
+  {
+    "table_name": "dim_lists_iu",
+    "column_name": "entity_ids.timeupdated",
+    "description": "Timestamp when the entity was last updated",
+    "data_type": "TIMESTAMP"
+  },
+  {
+    "table_name": "dim_lists_iu",
+    "column_name": "flg_alerts_enabled",
+    "description": "True if change alerts are enabled for this list",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "dim_lists_iu",
+    "column_name": "flg_is_counted_similar",
+    "description": "True if the list is counted in similar company logic",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "dim_lists_iu",
+    "column_name": "flg_is_featured",
+    "description": "True if the list is featured",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "dim_lists_iu",
+    "column_name": "flg_is_public",
+    "description": "True if the list is publicly visible",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "dim_lists_iu",
+    "column_name": "flg_is_special",
+    "description": "True if the list has special status",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "dim_lists_iu",
+    "column_name": "flg_is_visible",
+    "description": "True if the list is visible",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "dim_lists_iu",
+    "column_name": "id",
+    "description": "Unique identifier for the list",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "dim_lists_iu",
+    "column_name": "landscape_categories",
+    "description": "Array of landscape categories associated with this list; ordered by category order",
+    "data_type": "ARRAY<STRUCT<id INT64, title STRING, summary STRING, description STRING, `order` INT64, timecreated DATETIME, timeupdated DATETIME>>"
+  },
+  {
+    "table_name": "dim_lists_iu",
+    "column_name": "landscape_categories.description",
+    "description": "Full description of the landscape category",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "dim_lists_iu",
+    "column_name": "landscape_categories.id",
+    "description": "Landscape category identifier",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "dim_lists_iu",
+    "column_name": "landscape_categories.order",
+    "description": "Sort order of the category within the list",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "dim_lists_iu",
+    "column_name": "landscape_categories.summary",
+    "description": "Short summary of the landscape category",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "dim_lists_iu",
+    "column_name": "landscape_categories.timecreated",
+    "description": "Timestamp when the landscape category was created",
+    "data_type": "DATETIME"
+  },
+  {
+    "table_name": "dim_lists_iu",
+    "column_name": "landscape_categories.timeupdated",
+    "description": "Timestamp when the landscape category was last updated",
+    "data_type": "DATETIME"
+  },
+  {
+    "table_name": "dim_lists_iu",
+    "column_name": "landscape_categories.title",
+    "description": "Landscape category title",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "dim_lists_iu",
+    "column_name": "list_created_at",
+    "description": "Timestamp when the list was created",
+    "data_type": "TIMESTAMP"
+  },
+  {
+    "table_name": "dim_lists_iu",
+    "column_name": "list_creator_id",
+    "description": "Bobject ID of the user/entity who created the list",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "dim_lists_iu",
+    "column_name": "list_updated_at",
+    "description": "Timestamp when the list was last updated",
+    "data_type": "TIMESTAMP"
+  },
+  {
+    "table_name": "dim_lists_iu",
+    "column_name": "pinned_at",
+    "description": "Timestamp when the list was pinned; NULL if not pinned",
+    "data_type": "DATETIME"
+  },
+  {
+    "table_name": "dim_lists_iu",
+    "column_name": "share_token",
+    "description": "Token used for sharing the list via URL",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "dim_lists_iu",
+    "column_name": "summary",
+    "description": "Short summary of the list",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "dim_lists_iu",
+    "column_name": "title",
+    "description": "List title",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "dim_lists_iu",
+    "column_name": "type",
+    "description": "List type classification",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "dim_lists_iu",
+    "column_name": "users",
+    "description": "Array of users associated with / having access to this list; ordered by timecreated ascending",
+    "data_type": "ARRAY<STRUCT<person_id INT64, timecreated DATETIME>>"
+  },
+  {
+    "table_name": "dim_lists_iu",
+    "column_name": "users.person_id",
+    "description": "Person ID of the user with access to the list (join with entities_iu.id where entity_type = 'person')",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "dim_lists_iu",
+    "column_name": "users.timecreated",
+    "description": "Timestamp when the user was added to the list",
+    "data_type": "DATETIME"
+  },
+  {
+    "table_name": "dim_tags_iu",
+    "column_name": "aliases",
+    "description": "Array of alternative names/aliases for this tag",
+    "data_type": "ARRAY<STRING>"
+  },
+  {
+    "table_name": "dim_tags_iu",
+    "column_name": "description",
+    "description": "Tag description if available",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "dim_tags_iu",
+    "column_name": "id",
+    "description": "Tag identifier (id within its original dimension)",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "dim_tags_iu",
+    "column_name": "is_muted",
+    "description": "For sector tags, true if the sector is muted (hidden/deprioritised) in the source; NULL for all other tag types (not applicable).",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "dim_tags_iu",
+    "column_name": "name",
+    "description": "Canonical tag name",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "dim_tags_iu",
+    "column_name": "name_norm",
+    "description": "Normalized name for lexical search (lowercase, no diacritics)",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "dim_tags_iu",
+    "column_name": "parent_id",
+    "description": "For sub_category rows, the parent category id; NULL otherwise",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "dim_tags_iu",
+    "column_name": "searchable_text",
+    "description": "Combined name and description for semantic search",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "dim_tags_iu",
+    "column_name": "tag_type",
+    "description": "Discriminator of tag family. Values map to entities_iu array columns:\n- \"sector\" -> entities_iu.sectors\n- \"technology\" -> entities_iu.technologies\n- \"category\" -> entities_iu.industries\n- \"sub_category\" -> entities_iu.sub_industries\n- \"sdg\" -> entities_iu.sdgs\n- \"techstack_category\" -> entities_iu.techstack_categories\n- \"ownership\" -> entities_iu.ownerships\n- \"business_model\" -> entities_iu.business_model\n- \"income_stream\" -> entities_iu.income_stream\n- \"deal_structure\" -> investors_iu.deal_structure\n- \"client_focus\" -> entities_iu.client_focus\n- \"growth_stage\" -> entities_iu.growth_stage (scalar int, not an array; join on dim_tags_iu.id = entities_iu.growth_stage AND tag_type = 'growth_stage')\n",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "dim_tags_iu",
+    "column_name": "text_embedding",
+    "description": "Vector embedding for semantic search (currently not populated in this dataset)",
+    "data_type": "ARRAY<FLOAT64>"
+  },
+  {
+    "table_name": "dim_tags_iu",
+    "column_name": "unique_id",
+    "description": "Deterministic integer surrogate key unique across all tag types. Formula: id * 100 + tag_type_id (id is multiplied by 100 to guarantee collision-free encoding as tag_type_ids exceed 9), where sector=1, technology=2, category=3, sub_category=4, sdg=5, techstack_category=6, ownership=7, business_model=8, income_stream=9, deal_structure=10, client_focus=11, growth_stage=12.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "dim_locations_iu",
+    "column_name": "aliases",
+    "description": "Array of alternative names/aliases for this location",
+    "data_type": "ARRAY<STRING>"
+  },
+  {
+    "table_name": "dim_locations_iu",
+    "column_name": "city_region_parent",
+    "description": "Array of parent city_region names (full-containment — parent must contain all member cities of the child and be strictly larger by city count if location_type = 'city_region', if location_type = 'city' we get the parenting directly); empty for all other location types. Ordered by source region id; positionally parallel to city_region_parent_ids and city_region_parent_unique_ids.",
+    "data_type": "ARRAY<STRING>"
+  },
+  {
+    "table_name": "dim_locations_iu",
+    "column_name": "city_region_parent_ids",
+    "description": "Array of region ids (regions.id) parallel to city_region_parent. Ordered by region id; positionally parallel to city_region_parent and city_region_parent_unique_ids.",
+    "data_type": "ARRAY<INT64>"
+  },
+  {
+    "table_name": "dim_locations_iu",
+    "column_name": "city_region_parent_unique_ids",
+    "description": "Array of dim_locations_iu.unique_id values for city_region_parent rows (each element = city_region_parent_ids[i] * 10 + 5 — city_region type). Positionally parallel to city_region_parent and city_region_parent_ids.",
+    "data_type": "ARRAY<INT64>"
+  },
+  {
+    "table_name": "dim_locations_iu",
+    "column_name": "continent_parent",
+    "description": "Name of the single ancestor that is a continent; NULL if zero or multiple continent ancestors",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "dim_locations_iu",
+    "column_name": "continent_parent_id",
+    "description": "Canonical id (param_hq_locations.id) of the continent ancestor. Joins dim_locations_iu.id where location_type='continent'.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "dim_locations_iu",
+    "column_name": "continent_parent_unique_id",
+    "description": "Pre-computed dim_locations_iu.unique_id for the continent ancestor (continent_parent_id * 10 + 4).",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "dim_locations_iu",
+    "column_name": "country_parent",
+    "description": "Name of the single ancestor that is a country; NULL if zero or multiple country ancestors",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "dim_locations_iu",
+    "column_name": "country_parent_id",
+    "description": "Canonical id (param_hq_locations.id) of the country ancestor. Joins dim_locations_iu.id where location_type='country'.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "dim_locations_iu",
+    "column_name": "country_parent_unique_id",
+    "description": "Pre-computed dim_locations_iu.unique_id for the country ancestor (country_parent_id * 10 + 3).",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "dim_locations_iu",
+    "column_name": "display_location_type",
+    "description": "Curated display location type from microapps locations, NULL if not curated",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "dim_locations_iu",
+    "column_name": "display_name",
+    "description": "Curated display name from microapps locations, NULL if not curated",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "dim_locations_iu",
+    "column_name": "flg_in_eco_index_2026",
+    "description": "Flag indicating whether this location is included in the Eco Index 2026",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "dim_locations_iu",
+    "column_name": "flg_is_curated",
+    "description": "Flag indicating whether this location is curated in the microapps locations dataset",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "dim_locations_iu",
+    "column_name": "gdp_millions_dollars",
+    "description": "GDP in millions of dollars from curated microapps locations, NULL if not curated",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "dim_locations_iu",
+    "column_name": "id",
+    "description": "Unique location identifier for each location_type",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "dim_locations_iu",
+    "column_name": "lat",
+    "description": "Latitude",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "dim_locations_iu",
+    "column_name": "location_type",
+    "description": "Type of location: continent, country, state, city, city_region, country_region, region",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "dim_locations_iu",
+    "column_name": "location_type_id",
+    "description": "",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "dim_locations_iu",
+    "column_name": "lon",
+    "description": "Longitude",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "dim_locations_iu",
+    "column_name": "name",
+    "description": "Canonical location name",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "dim_locations_iu",
+    "column_name": "name_norm",
+    "description": "Normalized name for lexical search",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "dim_locations_iu",
+    "column_name": "population",
+    "description": "Population for the location, coalesced from curated microapps data and raw hq_locations data",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "dim_locations_iu",
+    "column_name": "region_parent",
+    "description": "Array of region names where this location is a member (country_regions via regions_countries; cities/states also inherit from country). Ordered by source region id; positionally parallel to region_parent_ids and region_parent_unique_ids.",
+    "data_type": "ARRAY<STRING>"
+  },
+  {
+    "table_name": "dim_locations_iu",
+    "column_name": "region_parent_ids",
+    "description": "Array of region ids (regions.id) where this location is a member. Ordered by region id; positionally parallel to region_parent and region_parent_unique_ids. These resolve to country_region rows in dim_locations_iu.",
+    "data_type": "ARRAY<INT64>"
+  },
+  {
+    "table_name": "dim_locations_iu",
+    "column_name": "region_parent_unique_ids",
+    "description": "Array of dim_locations_iu.unique_id values for region_parent rows (each element = region_parent_ids[i] * 10 + 6 — country_region type). Positionally parallel to region_parent and region_parent_ids.",
+    "data_type": "ARRAY<INT64>"
+  },
+  {
+    "table_name": "dim_locations_iu",
+    "column_name": "searchable_text",
+    "description": "Full location path for semantic search (name, parent hierarchy, display_name when different, aliases for HQ locations). E.g. \\\"Lisbon, Portugal, Europe\\\" or \\\"Bay Area, California, United States, North America\\\"",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "dim_locations_iu",
+    "column_name": "state_parent",
+    "description": "Name of the single ancestor that is a state; NULL if zero or multiple state ancestors",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "dim_locations_iu",
+    "column_name": "state_parent_id",
+    "description": "Canonical id (param_hq_locations.id) of the state ancestor. Joins dim_locations_iu.id where location_type='state'. NULL when state_parent is NULL.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "dim_locations_iu",
+    "column_name": "state_parent_unique_id",
+    "description": "Pre-computed dim_locations_iu.unique_id for the state ancestor (state_parent_id * 10 + 2).",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "dim_locations_iu",
+    "column_name": "text_embedding",
+    "description": "Vector embedding for semantic search (currently not populated in this dataset)",
+    "data_type": "ARRAY<FLOAT64>"
+  },
+  {
+    "table_name": "dim_locations_iu",
+    "column_name": "unique_id",
+    "description": "Deterministic integer surrogate key computed as id * 10 + location_type_id. Collision-free across all location types and ID spaces.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "dim_currency_rates_iu",
+    "column_name": "currency",
+    "description": "Abbreviated currency code",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "dim_currency_rates_iu",
+    "column_name": "currency_name",
+    "description": "Full name of the currency",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "dim_currency_rates_iu",
+    "column_name": "eur_rate",
+    "description": "Exchange rate of the currency against the Euro",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "dim_currency_rates_iu",
+    "column_name": "usd_rate",
+    "description": "Exchange rate of the currency against the US Dollar (approx; derived from EUR rate)",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "investor_name",
+    "description": "[Dataset: reporting_iu — full path: `omega-dahlia-347111.reporting_iu.power_law`] Display name of the investor entity.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "investor_country",
+    "description": "Country and continent of the investor's headquarters, formatted as \"Country, Continent\" (e.g., \"United States, North America\").",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "launch_year",
+    "description": "Year the investor was founded or launched.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "age",
+    "description": "Number of years since the investor was founded (current year minus launch_year). NULL if launch_year is unknown.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "link",
+    "description": "Relative Dealroom app URL for the investor profile (e.g., \"app.dealroom.co/investors/sequoia\").",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "preferred_round",
+    "description": "The investment stage this investor typically leads or participates in (e.g., SEED, SERIES A, GROWTH).",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "investor_type",
+    "description": "High-level investor category. Values: 'angel', 'investment_fund', 'startup', 'university', 'government', or other lowercased type names.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "sub_types",
+    "description": "Comma-separated list of investor sub-type flags. Possible values: accelerator, advisor, angel_fund, corporate_venture_fund, family_office, government, non-profit, private_equity, venture_capital, sovereign_wealth_fund.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "bobject_investor_id",
+    "description": "Internal Dealroom numeric ID for the investor. NOT unique in this table — an investor appears once per (region, region_type, sector, sector_type) combination. Use as a join key to other investor tables; always pair with the region/sector filter to get a single row per investor.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "region",
+    "description": "The geographic label for this row. When region_type='country_region': a Dealroom-curated name for a group of countries (e.g., 'Global', 'EMEA', 'Nordics', 'Benelux', 'MENA'). When region_type='country': an individual country name. When region_type='city_region': a city-level cluster. To get one globally-scoped row per investor, filter region = 'Global'.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "region_type",
+    "description": "Type of geographic grouping. 'country_region' — named group of countries (Global, EMEA, Nordics, etc.); 'country' — individual country; 'city_region' — city-level cluster. For one non-duplicated global view per investor: region_type='country_region' AND region='Global'.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "sector",
+    "description": "Sector or tag label for this row. When sector_type='global', this is 'All' covering the investor's full portfolio.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "sector_type",
+    "description": "Taxonomy level of the sector column. Values: 'sector' (grey tags e.g. Fintech), 'technology' (e.g. Blockchain), 'category' (e.g. Healthcare), 'sub_category' (e.g. Payments), 'global' (no filter; sector='All').",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "unicorn_seed",
+    "description": "Number of unicorn companies (valuation ≥ $1B) in the portfolio where the investor first entered at seed stage (ANGEL or SEED round).",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "unicorn_early",
+    "description": "Number of unicorn companies where the investor first entered at early stage (EARLY VC or SERIES A).",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "unicorn_late",
+    "description": "Number of unicorn companies where the investor first entered at late stage.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "tb_seed",
+    "description": "Number of Thoroughbreds (sector_id = 22843) in the portfolio where the investor entered at seed stage.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "tb_early",
+    "description": "Number of Thoroughbreds where the investor entered at early stage.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "tb_late",
+    "description": "Number of Thoroughbreds where the investor entered at late stage.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "colt_seed",
+    "description": "Number of Colt companies (non-Thoroughbreds, founded ≥1990, revenue $25M–$100M) where the investor entered at seed stage.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "colt_early",
+    "description": "Number of Colt companies where the investor entered at early stage.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "unicorn_seed_names",
+    "description": "Comma-separated names of unicorn portfolio companies entered at seed stage.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "unicorn_early_names",
+    "description": "Comma-separated names of unicorn portfolio companies entered at early stage.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "unicorn_late_names",
+    "description": "Comma-separated names of unicorn portfolio companies entered at late stage.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "tb_seed_names",
+    "description": "Comma-separated names of Thoroughbred portfolio companies entered at seed stage.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "tb_early_names",
+    "description": "Comma-separated names of Thoroughbred portfolio companies entered at early stage.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "tb_late_names",
+    "description": "Comma-separated names of Thoroughbred portfolio companies entered at late stage.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "colt_seed_names",
+    "description": "Comma-separated names of Colt portfolio companies entered at seed stage.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "colt_early_names",
+    "description": "Comma-separated names of Colt portfolio companies entered at early stage.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "lead_unicorn_seed_names",
+    "description": "Comma-separated names of unicorn companies where the investor was the lead investor at seed stage.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "lead_unicorn_early_names",
+    "description": "Comma-separated names of unicorn companies where the investor led at early stage.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "lead_unicorn_late_names",
+    "description": "Comma-separated names of unicorn companies where the investor led at late stage.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "lead_tb_seed_names",
+    "description": "Comma-separated names of Thoroughbreds where the investor led at seed stage.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "lead_tb_early_names",
+    "description": "Comma-separated names of Thoroughbreds where the investor led at early stage.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "lead_tb_late_names",
+    "description": "Comma-separated names of Thoroughbreds where the investor led at late stage.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "lead_colt_seed_names",
+    "description": "Comma-separated names of Colt companies where the investor led at seed stage.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "lead_colt_early_names",
+    "description": "Comma-separated names of Colt companies where the investor led at early stage.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "unicorn_rank",
+    "description": "Total number of unicorn companies in the investor's portfolio (across all entry stages). Used for raw ranking.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "decacorn_rank",
+    "description": "Total number of decacorn companies (valuation ≥ $10B) in the portfolio.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "unicorn_seed_score",
+    "description": "Score contribution from unicorn seed investments (unicorn_seed × 100).",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "unicorn_early_score",
+    "description": "Score contribution from unicorn early investments (unicorn_early × 30).",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "unicorn_late_score",
+    "description": "Score contribution from unicorn late investments (unicorn_late × 10).",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "tb_seed_score",
+    "description": "Score contribution from Thoroughbred seed investments (tb_seed × 100).",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "tb_early_score",
+    "description": "Score contribution from Thoroughbred early investments (tb_early × 30).",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "tb_late_score",
+    "description": "Score contribution from Thoroughbred late investments (tb_late × 10).",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "colt_seed_score",
+    "description": "Score contribution from Colt seed investments (colt_seed × 25).",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "colt_early_score",
+    "description": "Score contribution from Colt early investments (colt_early × 7.5).",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "score_total",
+    "description": "Composite quality score. Formula: (unicorn_seed×100) + (unicorn_early×30) + (unicorn_late×10) + (tb_seed×100) + (tb_early×30) + (tb_late×10) + (colt_seed×25) + (colt_early×7.5). Only rows with score_total > 0 are included.",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "rounds_since_1990",
+    "description": "Total number of distinct funding rounds this investor has participated in since 1990, across all geographies and sectors.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "rounds_2024",
+    "description": "Number of distinct funding rounds this investor participated in during 2024.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "rounds_2025",
+    "description": "Number of distinct funding rounds this investor participated in during 2025.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "last_fund_amount",
+    "description": "USD amount of the investor's most recently closed VC fund. NULL if no fund data available.",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "last_fund_date",
+    "description": "Date the investor's most recently closed VC fund was announced.",
+    "data_type": "DATE"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "fund_status",
+    "description": "Status of the investor's most recent fund. Values: 'Open', 'Closed', or empty string if unknown.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "funds_names",
+    "description": "For angel investors: comma-separated names of VC funds the angel has founded (derived from the angel being a founder of a fund-type entity).",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "aum",
+    "description": "Assets under management in USD for the investor's most recent AUM record. NULL if not available.",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "activity",
+    "description": "'active' if the investor participated in at least one round in 2024 or 2025; 'inactive' otherwise.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "region_cume_dist",
+    "description": "PERCENT_RANK within the (region, region_type, sector, sector_type) partition, ordered by score_total descending. Range: 0.0 (best) to 1.0 (worst). Investors with equal score_total share the same rank.",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "power_law",
+    "column_name": "percentile",
+    "description": "Human-readable percentile bucket within the (region, region_type, sector, sector_type) slice. Values: 'Top 0.1%', 'Top 1%', 'Top 2.5%', 'Top 10%', 'Top 50%', 'Bottom 50%'. Use for display; use region_cume_dist for numeric comparisons.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "investor_name",
+    "description": "[Dataset: reporting_iu — full path: `omega-dahlia-347111.reporting_iu.power_law_rising_star_usa`] Display name of the investor entity.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "investor_country",
+    "description": "Country and continent of the investor's headquarters, formatted as \"Country, Continent\" (e.g., \"United States, North America\").",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "launch_year",
+    "description": "Year the investor was founded or launched.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "age",
+    "description": "Number of years since the investor was founded (current year minus launch_year). NULL if launch_year is unknown.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "link",
+    "description": "Relative Dealroom app URL for the investor profile (e.g., \"app.dealroom.co/investors/sequoia\").",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "preferred_round",
+    "description": "The investment stage this investor typically leads or participates in (e.g., SEED, SERIES A, GROWTH).",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "investor_type",
+    "description": "High-level investor category. Values: 'angel', 'investment_fund', 'startup', 'university', 'government', or other lowercased type names.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "sub_types",
+    "description": "Comma-separated list of investor sub-type flags. Possible values: accelerator, advisor, angel_fund, corporate_venture_fund, family_office, government, non-profit, private_equity, venture_capital, sovereign_wealth_fund.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "bobject_investor_id",
+    "description": "Internal Dealroom numeric ID for the investor. NOT unique in this table — an investor appears once per (region, region_type, sector, sector_type) combination. Use as a join key to other investor tables; always pair with the region/sector filter to get a single row per investor.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "region",
+    "description": "The US geographic label for this row. When region_type='country': always 'United States'. When region_type='state': a US state name (e.g., 'California', 'Texas'). When region_type='us_region': a US macro-region (e.g., 'Northeastern United States'). To get one US-wide row per investor, filter region='United States'.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "region_type",
+    "description": "Type of US geographic grouping. 'country' — United States as a whole; 'state' — individual US state; 'us_region' — US macro-region assembled from city-level clusters. For one non-duplicated US-wide view: region_type='country' AND region='United States'.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "sector",
+    "description": "Sector or tag label for this row. When sector_type='global', this is 'All' covering the investor's full US portfolio.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "sector_type",
+    "description": "Taxonomy level of the sector column. Values: 'sector' (grey tags), 'technology', 'category', 'sub_category', 'global' (no filter; sector='All').",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "unicorn_seed",
+    "description": "Number of unicorn companies (valuation ≥ $1B) in the portfolio where the investor first entered at seed stage (ANGEL or SEED round).",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "unicorn_early",
+    "description": "Number of unicorn companies where the investor first entered at early stage (EARLY VC or SERIES A).",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "unicorn_late",
+    "description": "Number of unicorn companies where the investor first entered at late stage.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "tb_seed",
+    "description": "Number of Thoroughbreds (sector_id = 22843) in the portfolio where the investor entered at seed stage.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "tb_early",
+    "description": "Number of Thoroughbreds where the investor entered at early stage.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "tb_late",
+    "description": "Number of Thoroughbreds where the investor entered at late stage.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "rising_star_seed",
+    "description": "Number of US Rising Star companies where the investor entered at seed stage. Rising Stars are non-Thoroughbreds: founded ≥2020, Dealroom signal score ≥85, privately held, valuation <$1B, not yet a unicorn.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "rising_star_early",
+    "description": "Number of US Rising Star companies where the investor entered at early stage.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "unicorn_seed_names",
+    "description": "Comma-separated names of unicorn portfolio companies entered at seed stage.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "unicorn_early_names",
+    "description": "Comma-separated names of unicorn portfolio companies entered at early stage.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "unicorn_late_names",
+    "description": "Comma-separated names of unicorn portfolio companies entered at late stage.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "tb_seed_names",
+    "description": "Comma-separated names of Thoroughbred portfolio companies entered at seed stage.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "tb_early_names",
+    "description": "Comma-separated names of Thoroughbred portfolio companies entered at early stage.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "tb_late_names",
+    "description": "Comma-separated names of Thoroughbred portfolio companies entered at late stage.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "rising_star_seed_names",
+    "description": "Comma-separated names of US Rising Star companies where the investor entered at seed stage.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "rising_star_early_names",
+    "description": "Comma-separated names of US Rising Star companies where the investor entered at early stage.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "lead_unicorn_seed_names",
+    "description": "Comma-separated names of unicorn companies where the investor was the lead investor at seed stage.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "lead_unicorn_early_names",
+    "description": "Comma-separated names of unicorn companies where the investor led at early stage.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "lead_unicorn_late_names",
+    "description": "Comma-separated names of unicorn companies where the investor led at late stage.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "lead_tb_seed_names",
+    "description": "Comma-separated names of Thoroughbreds where the investor led at seed stage.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "lead_tb_early_names",
+    "description": "Comma-separated names of Thoroughbreds where the investor led at early stage.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "lead_tb_late_names",
+    "description": "Comma-separated names of Thoroughbreds where the investor led at late stage.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "lead_rising_star_seed_names",
+    "description": "Comma-separated names of US Rising Star companies where the investor led at seed stage.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "lead_rising_star_early_names",
+    "description": "Comma-separated names of US Rising Star companies where the investor led at early stage.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "unicorn_rank",
+    "description": "Total number of unicorn companies in the investor's portfolio (across all entry stages). Used for raw ranking.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "decacorn_rank",
+    "description": "Total number of decacorn companies (valuation ≥ $10B) in the portfolio.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "unicorn_seed_score",
+    "description": "Score contribution from unicorn seed investments (unicorn_seed × 100).",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "unicorn_early_score",
+    "description": "Score contribution from unicorn early investments (unicorn_early × 30).",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "unicorn_late_score",
+    "description": "Score contribution from unicorn late investments (unicorn_late × 10).",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "tb_seed_score",
+    "description": "Score contribution from Thoroughbred seed investments (tb_seed × 100).",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "tb_early_score",
+    "description": "Score contribution from Thoroughbred early investments (tb_early × 30).",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "tb_late_score",
+    "description": "Score contribution from Thoroughbred late investments (tb_late × 10).",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "rising_star_seed_score",
+    "description": "Score contribution from Rising Star seed investments (rising_star_seed × 25).",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "rising_star_early_score",
+    "description": "Score contribution from Rising Star early investments (rising_star_early × 7.5).",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "score_total",
+    "description": "Composite quality score. Formula: (unicorn_seed×100) + (unicorn_early×30) + (unicorn_late×10) + (tb_seed×100) + (tb_early×30) + (tb_late×10) + (rising_star_seed×25) + (rising_star_early×7.5). Only rows with score_total > 0 are included.",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "rounds_since_1990",
+    "description": "Total number of distinct funding rounds this investor has participated in since 1990, across all geographies and sectors.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "rounds_2024",
+    "description": "Number of distinct funding rounds this investor participated in during 2024.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "rounds_2025",
+    "description": "Number of distinct funding rounds this investor participated in during 2025.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "last_fund_amount",
+    "description": "USD amount of the investor's most recently closed VC fund. NULL if no fund data available.",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "last_fund_date",
+    "description": "Date the investor's most recently closed VC fund was announced.",
+    "data_type": "DATE"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "fund_status",
+    "description": "Status of the investor's most recent fund. Values: 'Open', 'Closed', or empty string if unknown.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "funds_names",
+    "description": "For angel investors: comma-separated names of VC funds the angel has founded (derived from the angel being a founder of a fund-type entity).",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "aum",
+    "description": "Assets under management in USD for the investor's most recent AUM record. NULL if not available.",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "activity",
+    "description": "'active' if the investor participated in at least one round in 2024 or 2025; 'inactive' otherwise.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "region_cume_dist",
+    "description": "PERCENT_RANK within the (region, region_type, sector, sector_type) partition, ordered by score_total descending. Range: 0.0 (best) to 1.0 (worst). Investors with equal score_total share the same rank.",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "power_law_rising_star_usa",
+    "column_name": "percentile",
+    "description": "Human-readable percentile bucket within the (region, region_type, sector, sector_type) slice. Values: 'Top 0.1%', 'Top 1%', 'Top 2.5%', 'Top 10%', 'Top 50%', 'Bottom 50%'. Use for display; use region_cume_dist for numeric comparisons.",
+    "data_type": "STRING"
+  }
+]

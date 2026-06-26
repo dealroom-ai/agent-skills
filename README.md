@@ -31,6 +31,7 @@ Requires Node 18+. After install, restart Claude Code (or start a new session) t
 | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | `linear-issue-writing`      | Structure Linear issues (parent features, sub-tasks, bug reports) with clear acceptance criteria.                                     |
 | `dealroom-early-access-api` | Build against the Dealroom early-access (next-gen) API: OAuth2 setup, picking transactional vs aggregate endpoints, live-doc routing. |
+| `dealroom-bigquery`         | Write SQL against the Dealroom BigQuery dataset (`dealroom_intelligence`), write prompts for the BigQuery agent, and review/correct agent-generated SQL. Ships the full schema reference. |
 
 ## Contributing a skill
 
