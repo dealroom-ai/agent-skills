@@ -22,8 +22,9 @@ description: >-
 How to build against the Dealroom next-gen REST API: authenticate, pick the right
 endpoint, and discover filters from the live API instead of guessing.
 
-This skill currently covers **Programmatic (M2M) API usage only**. Browser/SPA support is
-coming; until then, do not ask users for browser-app callback URLs or PKCE setup.
+This skill covers **Programmatic (M2M) API usage**. Application (PKCE) keys for browser
+SPAs also exist (read-only, created from the same settings page), but this skill does not
+cover that flow.
 
 This skill holds only the durable parts (auth, endpoint judgment, discovery mechanism,
 pointers). Endpoint shapes, the full filter catalog, and field lists live in the API
@@ -70,7 +71,9 @@ enrich or count a result set.
 | A count / sum / avg / median grouped by a dimension              | `GET /api/analytics/aggregate/{source}`                            | paging the list and reducing client-side |
 | Several metrics at once (KPIs, leaderboards)                     | `GET /api/analytics/aggregate/{source}/multi-metric`               | many separate calls          |
 | A 2D matrix, stage transitions, or a per-year trend              | `GET /api/analytics/funding-analytics/{heatmap,round-transitions,funnel}`, `/api/analytics/timeseries` |        |
-| Fuzzy name lookup ("find Stripe")                                | `GET /api/data/search`                                             | an `/api/data/entities` name filter |
+| Fuzzy name lookup ("find Stripe")                                | `GET /api/data/search` (all five collections; narrow with `types=`) | an `/api/data/entities` name filter |
+| Ranked investor recommendations for a target company             | `GET /api/analytics/matching/investors`                            | hand-rolled portfolio-overlap queries |
+| Companies / investors similar to a given one                     | `GET /api/data/companies/{id}/similar`, `/api/data/investors/{id}/similar` | building your own tag-overlap ranking |
 
 **Anti-patterns:**
 
@@ -83,18 +86,22 @@ enrich or count a result set.
   is exactly what `GET /api/analytics/aggregate/{source}` is for.
 
 **Relationship sub-resources are facet-scoped by entity type.** They are *not* on
-`/api/data/entities/{id}` (that path carries only the detail record plus `changelog` and
-`lp-funds`). Read the entity's `type` / `organization_subtype` / `is_investor` /
-`is_founder` flags from the detail payload, then call the matching typed collection. The
-paths are static and knowable:
+`/api/data/entities/{id}` (that path carries only the detail record plus `lp-funds`).
+Read the entity's `type` / `organization_subtype` / `is_investor` / `is_founder` flags
+from the detail payload, then call the matching typed collection. The paths are static
+and knowable:
 
 - **Companies** (`/api/data/companies/{id}/`): `funding-rounds`, `valuations`,
-  `financials`, `investors`, `team`, `headcount-breakdown`, `web-traffic`
+  `financials`, `investors`, `team`, `headcount-breakdown`, `web-traffic`, `similar`
 - **Investors** (`/api/data/investors/{id}/`): `portfolio`, `investment-funds`,
-  `lp-funds`, `team`
+  `lp-funds`, `team`, `similar`
 - **People / founders / universities**: `/api/data/people/{id}/career`,
   `/api/data/founders/{id}/founded-companies`, `/api/data/universities/{id}/alumni`,
   and `team` on universities / gov-ngo
+
+The `similar` collections rank by weighted tag overlap (force-sorted by score), accept
+the full company/investor filter DSL to narrow the pool, and use offset pagination
+capped at `offset + limit <= 1000`.
 
 ## Setup
 
@@ -185,19 +192,9 @@ when the API moves.
 Every breaking change, deprecation, and addition is listed in the
 **[changelog](https://developers.beta.dealroom.co/mintlify/changelog)** with the version
 date and affected endpoints. **If you are returning to a project built against an earlier
-version of this skill, read the changelog first** - it is the fastest way to see what
-moved. The headline changes this skill now reflects:
-
-- **Functional namespaces** (`2026-06-17`): every endpoint moved under `/api/data/*`,
-  `/api/analytics/*`, `/api/reference/*`, `/api/platform/*`, or `/api/system/*`. The old
-  flat `/api/<resource>` paths were removed.
-- **Relationship sub-resources moved to typed collections** (`2026-06-21`): no longer on
-  `/api/data/entities/{id}/*` - see [Choosing the right endpoint](#choosing-the-right-endpoint).
-- **Investor subtype `fund` → `investor`** (`2026-06-19`); `/entities/{id}/funds` →
-  `/investment-funds`.
-- **Legacy `is_company`-style flags removed** (`2026-06-02`); use `organization_subtype`.
-- **Monetary fields are now integers, not strings** (`2026-05-22`); funding sort keys
-  `year`/`month` collapsed to `date`, and cursor pagination added (`2026-05-25`).
+version of this skill, or anything here looks stale, read the changelog first** - it is
+the fastest way to see what moved. This skill deliberately keeps no per-version change
+list: the live changelog is the single source of truth for what changed when.
 
 ## Constructing queries
 
@@ -232,9 +229,16 @@ them live (next section) or read the
 
 ### Discover filters and resolve IDs (do not guess)
 
-Locations, industries, and tags are **numeric IDs**, not strings:
-`location[eq]:United+States` returns nothing; `location[eq]:233` works. Discover and
-resolve at runtime:
+There are two ID families - never mix them up:
+
+- **Taxonomy IDs are numeric** (locations, industries, tags, degrees, backgrounds), not
+  strings: `location[eq]:United+States` returns nothing; `location[eq]:233` works.
+- **Entity IDs are UUIDs** - every path `{id}` param and every entity-reference filter
+  (`entity_id`, `investor_id`, `company_investor_id`, `portfolio_company_id`, and
+  relationship `.id` paths like `founder__university.id`). An integer where a UUID is
+  expected fails validation or matches nothing.
+
+Discover and resolve at runtime:
 
 ```bash
 GET /api/reference/filters?scope=companies              # valid filter keys, operators, types, data status
@@ -279,6 +283,7 @@ not paste whole pages or the full spec into context.
 
 | Need                                          | Where                                                                  |
 | --------------------------------------------- | ---------------------------------------------------------------------- |
+| Enumerate namespaces / resources at runtime   | `GET /api` lists the five namespaces; each namespace index (`GET /api/data`, `GET /api/analytics`, ...) lists its resources |
 | Exact request/response shape for any endpoint | `https://api-next.beta.dealroom.co/openapi` (then `jq '.paths | keys'`, then `jq '.paths["/api/<path>"]'`) |
 | Swagger UI                                    | `https://api-next.beta.dealroom.co/docs`                               |
 | Guides + concepts (filtering, aggregates, pagination, rate limits) | `https://developers.beta.dealroom.co/mintlify` |
@@ -286,10 +291,9 @@ not paste whole pages or the full spec into context.
 | Known limitations (stub / no-data endpoints + filters) | `https://developers.beta.dealroom.co/mintlify/concepts/known-limitations` |
 | Changelog (breaking changes, deprecations, new features per version) | `https://developers.beta.dealroom.co/mintlify/changelog` |
 
-Some advertised endpoints and filters are not fully functional yet (ecosystems/landscapes
-are user-owned scratch space, several investor fund-field filters return zero rows, exit
-details are partial, `/api/system/metrics` is a stub). Check the known-limitations page, the
-`x-data-status` extension in the OpenAPI spec, or the `data_status` field from
+Some advertised endpoints and filters are stubbed or not fully data-loaded yet, and the
+set changes over time. Check the known-limitations page, the `x-data-status` extension in
+the OpenAPI spec, or the `data_status` field from
 `GET /api/reference/filters?scope=<scope>` before relying on a surface in production.
 
 ## Common errors
