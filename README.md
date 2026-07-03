@@ -31,6 +31,7 @@ Requires Node 18+. After install, restart Claude Code (or start a new session) t
 | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | `linear-issue-writing`      | Structure Linear issues (parent features, sub-tasks, bug reports) with clear acceptance criteria.                                     |
 | `dealroom-early-access-api` | Build against the Dealroom early-access (next-gen) API: OAuth2 setup, picking transactional vs aggregate endpoints, live-doc routing. |
+| `dealroom-bigquery`         | Write SQL against the Dealroom BigQuery dataset (`dealroom_intelligence`), write prompts for the BigQuery agent, and review/correct agent-generated SQL. Ships the full schema reference. |
 
 ## Contributing a skill
 
@@ -52,6 +53,23 @@ Requires Node 18+. After install, restart Claude Code (or start a new session) t
 4. Open a PR.
 
 Keep skills portable: no hard-coded paths, no repo-specific assumptions. If something is dealroom-next-gen-specific, it belongs in that repo's `.claude/skills/` instead.
+
+## Updating the BigQuery schema reference
+
+`skills/dealroom-bigquery/references/schema.json` is generated from BigQuery
+`INFORMATION_SCHEMA` (descriptions come from what dbt persists via `persist_docs`).
+After a dbt run that changes columns, refresh it:
+
+```bash
+python3 scripts/update-schema.py --check   # diff only — what dbt changed
+python3 scripts/update-schema.py           # rewrite schema.json + print diff
+```
+
+Then commit, push, and re-install (`install dealroom-bigquery --force`). Requires the
+`bq` CLI authenticated with read access to `omega-dahlia-347111`. The script only
+touches `schema.json`; if it reports **added/removed** tables or columns, review the
+hand-written narrative in `references/schema.md` (join paths, enums, gotchas) by hand —
+edit the table/dataset list at the top of the script to change coverage.
 
 ## License
 
