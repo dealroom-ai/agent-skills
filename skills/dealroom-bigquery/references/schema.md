@@ -53,7 +53,7 @@ people_iu.universities (UNNEST).bobject_university_id → entities_iu.id  (where
 timeseries_data_iu.entity_id                      → entities_iu.id
 headcount_breakdown_iu.entity_id                  → entities_iu.id
 web_traffic_iu.entity_id                          → entities_iu.id
-news_iu.related_entities (UNNEST).entity_id       → entities_iu.id
+news_iu.mentioned_entities (UNNEST).id            → entities_iu.id
 jobs_iu.entity_id                                 → entities_iu.id
 dim_lists_iu.entity_ids (UNNEST).entity_id        → entities_iu.id
 Entity arrays (sectors, technologies, industries, sub_industries) UNNEST → dim_tags_iu.id
@@ -279,22 +279,20 @@ Unified tag taxonomy for all classification arrays on entities.
 
 ## News Table (`news_iu`)
 
-One row per news item (feed articles + editorial notes). Use `unique_id` as the primary key; raw `id` repeats across sources.
+One row per news item (AI-summarised feed articles + editorial notes). `id` (INT64) is the primary key.
 
-- `unique_id` (INT64) — stable table-wide key; **use this for joins/deduplication**
-- `id` (INT64) — raw source id (not unique across sources)
-- `source` (STRING) — `'feed_item'` (AI-summarised syndicated article) or `'note'` (editorial in-house note)
-- `title` (STRING), `slug` (STRING — unique URL-friendly identifier)
-- `links` — ARRAY<STRING> — external source URL(s); empty for notes
+- `id` (INT64) — news item id (primary key)
+- `slug` (STRING) — unique URL-friendly identifier
+- `title` (STRING)
+- `content` (STRING) — text body; may contain HTML
+- `source_urls` — ARRAY<STRING> — external source URL(s)
 - `images` — ARRAY<STRUCT<id, name, flg_is_primary>>; prepend `https://sg-imgs.dealroom.co/<name>` to render
 - `pub_datetime` (TIMESTAMP) — publication timestamp (UTC)
-- `content` (STRING) — text body; may contain HTML
-- `flg_is_top_story` (BOOL) — hand-picked editorial highlights
-- `flg_is_pinned` (BOOL) — the single most prominent pinned top story
-- `feed_source` — STRUCT<id, name, link>; NULL for notes
-- `related_entities` — ARRAY<STRUCT<entity_id, name, website, flg_is_target, sector, hq_country>>; join `entity_id` to `entities_iu.id`
 - `news_types` — ARRAY<STRUCT<id, name>> — values: Funding rounds, Mergers and acquisitions, Financial milestones, Product announcements, IPO, Key hires, Market expansion, Investor fundraising, Layoffs
-- `fundings` — ARRAY<STRUCT<round_type, amount_eur, amount_usd, deal_date>> — funding rounds the article reports on; empty when not a funding article
+- `importance_score` (INT64) — editorial/ranking importance of the item
+- `flg_is_pinned` (BOOL) — the single most prominent pinned top story
+- `mentioned_entities` — ARRAY<STRUCT<id, uuid, name, website, sector, hq_country>>; join `id` to `entities_iu.id`
+- `fundings` — ARRAY<STRUCT<id, round, standardised_round_label, amount_eur, amount_usd, date>> — funding rounds the article reports on; empty when not a funding article
 - `timecreate`, `timeupdate`
 
 ---

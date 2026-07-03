@@ -334,7 +334,7 @@ OR EXISTS (
 | Exit data | `funding_iu` only | `vc_funding_iu` does NOT contain exits; or use entity `flg_is_exited`/`year_of_exit` |
 | Job openings / hiring | `jobs_iu` | Join `entity_id` → entities.id; entity-level `flg_is_hiring` |
 | Lists & landscapes | `dim_lists_iu` | UNNEST `entity_ids` to get members |
-| News / press | `news_iu` | UNNEST `related_entities` (⚠ schema in flux) |
+| News / press | `news_iu` | UNNEST `mentioned_entities` (join `.id` → entities.id) |
 | Dealroom Signal ranking | `entities_iu` | Use `e.dealroom_signal.rating` (STRUCT, no UNNEST) |
 
 ## Step 5: Write clean SQL
