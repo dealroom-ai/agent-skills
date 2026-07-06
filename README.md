@@ -56,20 +56,27 @@ Keep skills portable: no hard-coded paths, no repo-specific assumptions. If some
 
 ## Updating the BigQuery schema reference
 
-`skills/dealroom-bigquery/references/schema.json` is generated from BigQuery
-`INFORMATION_SCHEMA` (descriptions come from what dbt persists via `persist_docs`).
-After a dbt run that changes columns, refresh it:
+`skills/dealroom-bigquery/references/schema.json` is generated from the **dbt
+repo's `schema.yml`** — the source of truth with the richest column comments,
+current with `main` before a prod run. Data types are enriched from live
+BigQuery where the column is already built. The output is the **union** of both:
+every column declared in yml *or* built in BigQuery, so nothing queryable is
+dropped even if it isn't documented yet.
 
 ```bash
-python3 scripts/update-schema.py --check   # diff only — what dbt changed
-python3 scripts/update-schema.py           # rewrite schema.json + print diff
+python3 scripts/update-schema.py --check    # diff only — what changed
+python3 scripts/update-schema.py            # rewrite schema.json + print diff
+python3 scripts/update-schema.py --no-types  # yml only, skip BigQuery
+python3 scripts/update-schema.py --dbt-repo /path/to/data-dbt-service
 ```
 
-Then commit, push, and re-install (`install dealroom-bigquery --force`). Requires the
-`bq` CLI authenticated with read access to `omega-dahlia-347111`. The script only
-touches `schema.json`; if it reports **added/removed** tables or columns, review the
-hand-written narrative in `references/schema.md` (join paths, enums, gotchas) by hand —
-edit the table/dataset list at the top of the script to change coverage.
+The dbt repo resolves from `--dbt-repo`, then `$DBT_REPO`, then common default
+locations. Types need the `bq` CLI authenticated for `omega-dahlia-347111`.
+The script only touches `schema.json` and reports two gaps to fix in dbt:
+**declared in yml but not yet built** (run/deploy dbt) and **built but
+undocumented in yml** (add column docs). It never edits the hand-written
+`references/schema.md` (join paths, enums, gotchas) — update that by hand.
+Then commit, push, and re-install (`install dealroom-bigquery --force`).
 
 ## License
 
