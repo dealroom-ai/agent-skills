@@ -262,6 +262,7 @@ Unified tag taxonomy for all classification arrays on entities.
 
 - `id`, `unique_id` (`id * 100 + tag_type_id`, collision-free), `name`, `name_norm`, `description`, `searchable_text`
 - `is_muted` (BOOL) — for sector tags, TRUE if the sector is muted (hidden/deprioritised); NULL for other tag types
+- `is_approved` (BOOL) — for sector and category tags, TRUE if the tag is approved in source; NULL for other tag types
 - `tag_type` — values: **sector, technology, category, sub_category, sdg, techstack_category, ownership, business_model, income_stream, deal_structure, client_focus, growth_stage**
 - `parent_id` — for sub_category rows, references parent category id
 - `aliases` — ARRAY<STRING>
