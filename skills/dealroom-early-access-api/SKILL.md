@@ -65,8 +65,11 @@ enrich or count a result set.
 | A list of companies / investors / people matching criteria       | `GET /api/data/entities` (or `/data/investors`, `/data/founders`, `/data/people`) | aggregate     |
 | The "top N by funding / valuation / signal"                      | list + `sort=-<field>` + `limit=N`                                 | aggregate group_by           |
 | Everything about one entity                                      | `GET /api/data/entities/{id}`                                      | aggregate                    |
-| One entity's rounds / valuations / investors / portfolio / team  | typed collections (see below): `GET /api/data/companies/{id}/{funding-rounds,valuations,investors,team}`, `/api/data/investors/{id}/{portfolio,investment-funds}` | aggregate |
+| One entity's rounds / valuations / investors / portfolio / team  | typed collections (see below): `GET /api/data/companies/{id}/{funding-rounds,valuations,investors,team}`, `/api/data/investors/{id}/{portfolio,funds}` | aggregate |
 | All funding rounds matching criteria                             | `GET /api/data/transactions`                                       | aggregate                    |
+| All valuations matching criteria (cross-entity)                  | `GET /api/data/valuations`                                         | aggregate                    |
+| Fund vehicles investor firms have raised (cross-manager)         | `GET /api/data/funds`                                              | `/api/data/investors`        |
+| Points to plot on a map                                          | `GET /api/data/{companies,investors,universities}/geo` (slim dots; see below) | a full list call you then thin client-side |
 | How many entities match (just the count)                         | the list call's `page.total` (`include_total=true`)                | an aggregate for a bare count |
 | A count / sum / avg / median grouped by a dimension              | `GET /api/analytics/aggregate/{source}`                            | paging the list and reducing client-side |
 | Several metrics at once (KPIs, leaderboards)                     | `GET /api/analytics/aggregate/{source}/multi-metric`               | many separate calls          |
@@ -93,7 +96,7 @@ and knowable:
 
 - **Companies** (`/api/data/companies/{id}/`): `funding-rounds`, `valuations`,
   `financials`, `investors`, `team`, `headcount-breakdown`, `web-traffic`, `similar`
-- **Investors** (`/api/data/investors/{id}/`): `portfolio`, `investment-funds`,
+- **Investors** (`/api/data/investors/{id}/`): `portfolio`, `funds`,
   `lp-funds`, `team`, `similar`
 - **People / founders / universities**: `/api/data/people/{id}/career`,
   `/api/data/founders/{id}/founded-companies`, `/api/data/universities/{id}/alumni`,
@@ -102,6 +105,18 @@ and knowable:
 The `similar` collections rank by weighted tag overlap (force-sorted by score), accept
 the full company/investor filter DSL to narrow the pool, and use offset pagination
 capped at `offset + limit <= 1000`.
+
+**Map points have their own slim lens.** `GET /api/data/{companies,investors,universities}/geo`
+returns one point per entity (id, name, coordinates) instead of the full list payload, takes
+the same `filter` as its list endpoint, and accepts `size_by=<numeric dimension>` (e.g.
+`total_funding`, `employee_count`, `latest_valuation`, `total_invested`,
+`total_investments_count`, `alumni_count`, `alumni_founder_count`) to return each point's
+`value` for proportional sizing. `size_by` also sorts descending, so a capped response keeps
+the highest-value points; entities without usable coordinates are omitted. For per-area
+counts (a choropleth rather than dots) use
+`GET /api/analytics/aggregate/companies?metric=count&group_by=map_area` instead. The older
+generic `GET /api/data/entities/geo` still exists (no `size_by`, higher limits) but prefer
+the per-collection endpoints.
 
 ## Setup
 
@@ -159,8 +174,6 @@ URL are the single biggest cause of agents writing throwaway escape scripts.
 
 ## Authentication
 
-Every `/api/*` request is authenticated; there is no anonymous access.
-
 - **Flow:** OAuth2 client-credentials (machine-to-machine). Exchange `client_id` /
   `client_secret` for a Bearer token, then send it on every call. The snippets do this
   for you.
@@ -168,9 +181,28 @@ Every `/api/*` request is authenticated; there is no anonymous access.
   `X-Client-Id: <client_id>` (missing it is a `400`). A custom `User-Agent` is optional
   and useful for server-side observability, but it is not part of authentication.
 - **Token lifetime:** 24h. Cache and reuse; do not mint per call. Snippets refresh on
-  `401`.
+  `401`. A key deactivated in the UI is rejected on its next request even while its token is
+  still inside that 24h window, so a `401` that survives one refresh means the key is dead,
+  not expired: stop and tell the user rather than re-minting in a loop.
 - **Mutations** (POST / PATCH / PUT / DELETE) additionally need the relevant write/delete
   permission on the key.
+
+### A missing token does not fail loudly - check that your auth applied
+
+Read endpoints also serve **anonymous** callers (that is how public ecosystem pages work), so
+a request with no or a dropped `Authorization` header returns `200` with a thinner row rather
+than `401`. Two markers tell you which principal the API actually saw:
+
+- `page.tier` - `anonymous` / `free` / `premium`, alongside `page.capped` and
+  `page.ecosystem`. Present only for non-M2M callers on capped resources.
+- `locked[]` - a top-level array of `{ field, reason, unlock }` for fields redacted (nulled,
+  not omitted) at that tier, e.g. `{ "field": "website", "reason": "ACCOUNT_REQUIRED",
+  "unlock": "signup" }`. Added only when something was actually redacted.
+
+**A `page.tier` of `anonymous` or a `locked[]` on a call you made with a key means your
+credentials did not apply.** Fix the headers; do not report the nulls as missing data. M2M
+callers are exempt from field redaction and from the per-tier page-size and pagination-depth
+caps below, so a correctly authenticated response has neither marker.
 
 The default environment is **beta**. For other environments, swap the base URL and Auth0
 host (the OAuth2 `audience` equals the API base URL):
@@ -190,7 +222,7 @@ server-side transforms until that version's sunset date, so existing code does n
 when the API moves.
 
 Every breaking change, deprecation, and addition is listed in the
-**[changelog](https://developers.beta.dealroom.co/mintlify/changelog)** with the version
+**[changelog](https://developers.beta.dealroom.co/changelog)** with the version
 date and affected endpoints. **If you are returning to a project built against an earlier
 version of this skill, or anything here looks stale, read the changelog first** - it is
 the fastest way to see what moved. This skill deliberately keeps no per-version change
@@ -225,7 +257,7 @@ vehicle and is no longer a valid `organization_subtype` value.)
 
 The exact key list, operators, and value types per scope are not memorized here. Discover
 them live (next section) or read the
-[Filters & Sorting reference](https://developers.beta.dealroom.co/mintlify/references/filters-and-sorting).
+[Filters & Sorting reference](https://developers.beta.dealroom.co/references/filters-and-sorting).
 
 ### Discover filters and resolve IDs (do not guess)
 
@@ -269,6 +301,11 @@ confirm real counts with the list call's `page.total`.
 - **Pagination:** offset-based (`limit` / `offset`). Some list responses also return
   `page.next_cursor` for keyset pagination; round-trip it opaquely. `include_total=false`
   skips the count for faster lists.
+- **Pagination depth is capped for non-M2M callers.** `offset + limit` above the caller's tier
+  ceiling (anonymous 750 / free 5,000 / premium 50,000, raisable per ecosystem) is a `400`
+  `PAGINATION_DEPTH_EXCEEDED` on both the offset and cursor paths - an error, not a silent
+  clamp. M2M keys are exempt. Page size, by contrast, clamps silently for non-M2M callers and
+  reports it via `page.capped`.
 - **Sorting:** `sort=-total_funding,name` (prefix `-` for descending, comma-separated).
 - **Currency:** `?currency=<ISO 4217>` converts thresholds and amounts (default USD). Field
   names stay base names (no `_usd` suffix); every response has a top-level `currency`.
@@ -286,10 +323,10 @@ not paste whole pages or the full spec into context.
 | Enumerate namespaces / resources at runtime   | `GET /api` lists the five namespaces; each namespace index (`GET /api/data`, `GET /api/analytics`, ...) lists its resources |
 | Exact request/response shape for any endpoint | `https://api-next.beta.dealroom.co/openapi` (then `jq '.paths | keys'`, then `jq '.paths["/api/<path>"]'`) |
 | Swagger UI                                    | `https://api-next.beta.dealroom.co/docs`                               |
-| Guides + concepts (filtering, aggregates, pagination, rate limits) | `https://developers.beta.dealroom.co/mintlify` |
-| Full filter + sorting catalog                 | `https://developers.beta.dealroom.co/mintlify/references/filters-and-sorting` |
-| Known limitations (stub / no-data endpoints + filters) | `https://developers.beta.dealroom.co/mintlify/concepts/known-limitations` |
-| Changelog (breaking changes, deprecations, new features per version) | `https://developers.beta.dealroom.co/mintlify/changelog` |
+| Guides + concepts (filtering, aggregates, pagination, rate limits) | `https://developers.beta.dealroom.co` |
+| Full filter + sorting catalog                 | `https://developers.beta.dealroom.co/references/filters-and-sorting` |
+| Known limitations (stub / no-data endpoints + filters) | `https://developers.beta.dealroom.co/concepts/known-limitations` |
+| Changelog (breaking changes, deprecations, new features per version) | `https://developers.beta.dealroom.co/changelog` |
 
 Some advertised endpoints and filters are stubbed or not fully data-loaded yet, and the
 set changes over time. Check the known-limitations page, the `x-data-status` extension in
@@ -301,8 +338,11 @@ the OpenAPI spec, or the `data_status` field from
 | Symptom                                       | Cause and fix                                                              |
 | --------------------------------------------- | -------------------------------------------------------------------------- |
 | `401 Unauthorized`                            | Token expired (24h). The snippet auto-refreshes.                           |
+| `401` that persists after one refresh         | The key was deactivated or deleted. Re-minting will not help; ask the user to check <https://app-next.beta.dealroom.co/settings/api>. |
 | `400` mentioning `X-Client-Id`                | The required client-id header is missing or does not match the token.        |
 | `400` / `UNKNOWN_FILTER`                      | Filter key wrong for this scope. Call `GET /api/reference/filters?scope=<scope>`. |
+| `400` / `PAGINATION_DEPTH_EXCEEDED`           | `offset + limit` past the tier depth cap (non-M2M only). Narrow the filter and partition the query instead of paging deeper. |
+| `200` with nulled fields and a `locked[]`     | The call was treated as anonymous or free. Your credentials did not apply - fix the headers. |
 | Empty `data: []` from a sane-looking filter   | The value did not resolve to a real ID. Look it up via `/api/reference/filters/{key}/values`. |
 | `429 Too Many Requests`                       | Rate limit. Back off, honor `Retry-After`, cache taxonomy lookups.         |
 | `504`                                         | 15s query timeout. Narrow the filter or set `include_total=false`.         |
