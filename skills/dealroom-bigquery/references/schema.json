@@ -1380,6 +1380,42 @@
     "data_type": "BOOL"
   },
   {
+    "table_name": "vc_combined_rounds_iu",
+    "column_name": "entity_id",
+    "description": "Company identifier; joins to entities_iu.id to attach company attributes (geography, sector, health, etc.) for filtered analyses.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "vc_combined_rounds_iu",
+    "column_name": "year",
+    "description": "Year of the earliest component of the combined round.",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "vc_combined_rounds_iu",
+    "column_name": "round_stage",
+    "description": "Round stage bucket: 'Seed', 'Series A', 'Series B', or 'Series C+' (Series C through I plus folded-in unnamed mega-rounds).",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "vc_combined_rounds_iu",
+    "column_name": "combined_round_label",
+    "description": "Underlying standardised round label of the combined round (e.g. 'SERIES C', 'LATE VC', 'GROWTH EQUITY VC') before bucketing into round_stage.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "vc_combined_rounds_iu",
+    "column_name": "round_type",
+    "description": "'named' for a standardised base round (plus its extensions), 'unnamed_mega' for a clustered unnamed mega-round (>= $100M LATE VC / GROWTH EQUITY VC).",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "vc_combined_rounds_iu",
+    "column_name": "total_amount_usd",
+    "description": "Total capital raised in the combined round (base plus all extensions, or the clustered mega-round total), in USD.",
+    "data_type": "FLOAT64"
+  },
+  {
     "table_name": "investors_iu",
     "column_name": "bobject_investor_id",
     "description": "Unique identifier for the investor",
@@ -1394,7 +1430,7 @@
   {
     "table_name": "investors_iu",
     "column_name": "investor_types",
-    "description": "Array of investor type labels (derived from Dealroom flags)",
+    "description": "Array of investor type labels: the coarse type from bo.type (angel, corporate, crowdfunding, university, government & non-profit, service provider, …) merged with fine fund sub-types from investor flags (venture capital, private equity, family office, angel fund, accelerator, advisor, incubator, pension fund, fund of funds, sovereign wealth fund). 'angel fund' (a type-3 fund) is kept distinct from the coarse 'angel' (a type-1 person); funds are described by their sub-types (no 'investment fund' label), and a fund with no sub-type falls back to 'other'.",
     "data_type": "ARRAY<STRING>"
   },
   {
@@ -2504,7 +2540,7 @@
   {
     "table_name": "dim_tags_iu",
     "column_name": "unique_id",
-    "description": "Deterministic integer surrogate key unique across all tag types. Formula: id * 100 + tag_type_id (id is multiplied by 100 to guarantee collision-free encoding as tag_type_ids exceed 9), where sector=1, technology=2, category=3, sub_category=4, sdg=5, techstack_category=6, ownership=7, business_model=8, income_stream=9, deal_structure=10, client_focus=11, growth_stage=12.",
+    "description": "Deterministic integer surrogate key unique across all tag types. Formula: id * 100 + tag_type_id (id is multiplied by 100 to guarantee collision-free encoding as tag_type_ids exceed 9), where sector=1, technology=2, category=3, sub_category=4, sdg=5, techstack_category=6, ownership=7, business_model=8, income_stream=9, deal_structure=10, client_focus=11, growth_stage=12, investor_type=13.",
     "data_type": "INT64"
   },
   {
@@ -2529,12 +2565,18 @@
     "table_name": "dim_tags_iu",
     "column_name": "is_approved",
     "description": "For sector and category tags, true if the tag has been approved in the source; NULL for all other tag types (not applicable).",
-    "data_type": ""
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "dim_tags_iu",
+    "column_name": "is_alias",
+    "description": "For sector, technology, category and sub_category tags, true if this row is an alias of another (canonical) tag rather than a canonical tag itself; NULL for all other tag types (not applicable). Alias rows are retained for all four types (entities can be tagged via an alias id); filter is_alias IS NOT TRUE for canonical-only tags (keeps FALSE rows and the NULL not-applicable types — a bare is_alias = false would drop those NULL rows). Sector alias rows are unreferenced by entities_iu (which inner-joins to canonical sectors) but are kept here for consistency.",
+    "data_type": "BOOL"
   },
   {
     "table_name": "dim_tags_iu",
     "column_name": "tag_type",
-    "description": "Discriminator of tag family. Values map to entities_iu array columns:\n- \"sector\" -> entities_iu.sectors\n- \"technology\" -> entities_iu.technologies\n- \"category\" -> entities_iu.industries\n- \"sub_category\" -> entities_iu.sub_industries\n- \"sdg\" -> entities_iu.sdgs\n- \"techstack_category\" -> entities_iu.techstack_categories\n- \"ownership\" -> entities_iu.ownerships\n- \"business_model\" -> entities_iu.business_model\n- \"income_stream\" -> entities_iu.income_stream\n- \"deal_structure\" -> investors_iu.deal_structure\n- \"client_focus\" -> entities_iu.client_focus\n- \"growth_stage\" -> entities_iu.growth_stage (scalar int, not an array; join on dim_tags_iu.id = entities_iu.growth_stage AND tag_type = 'growth_stage')",
+    "description": "Discriminator of tag family. Values map to entities_iu array columns:\n- \"sector\" -> entities_iu.sectors\n- \"technology\" -> entities_iu.technologies\n- \"category\" -> entities_iu.industries\n- \"sub_category\" -> entities_iu.sub_industries\n- \"sdg\" -> entities_iu.sdgs\n- \"techstack_category\" -> entities_iu.techstack_categories\n- \"ownership\" -> entities_iu.ownerships\n- \"business_model\" -> entities_iu.business_model\n- \"income_stream\" -> entities_iu.income_stream\n- \"deal_structure\" -> investors_iu.deal_structure\n- \"client_focus\" -> entities_iu.client_focus\n- \"growth_stage\" -> entities_iu.growth_stage (scalar int, not an array; join on dim_tags_iu.id = entities_iu.growth_stage AND tag_type = 'growth_stage')\n- \"investor_type\" -> investors_iu.investor_types (array of label strings, no shared integer id; join on dim_tags_iu.name = label AND tag_type = 'investor_type')",
     "data_type": "STRING"
   },
   {
