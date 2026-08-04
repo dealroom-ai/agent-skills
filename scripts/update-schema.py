@@ -29,7 +29,8 @@ PROJECT = "omega-dahlia-347111"
 SOURCES = {
     "intelligence_unit": (
         "dbt/models/intelligence_unit/schema.yml",
-        ["entities_iu", "funding_iu", "vc_funding_iu", "investors_iu", "people_iu",
+        ["entities_iu", "funding_iu", "vc_funding_iu", "vc_combined_rounds_iu",
+         "investors_iu", "people_iu",
          "people_organizations_iu", "timeseries_data_iu", "headcount_breakdown_iu",
          "web_traffic_iu", "news_iu", "jobs_iu", "dim_lists_iu", "dim_tags_iu",
          "dim_locations_iu", "dim_currency_rates_iu"],

@@ -15,6 +15,7 @@
 | `entities_iu` | `intelligence_unit` | Central table — companies, investors, people, universities. Distinguished by `entity_type` / `organization_subtype` | Large |
 | `funding_iu` | `intelligence_unit` | All funding rounds & exit events (broad — includes grants, debt, exits, VC) | ~1M |
 | `vc_funding_iu` | `intelligence_unit` | VC-only funding subset (pre-filtered: excludes outside-tech & mature-stage companies) | ~549K |
+| `vc_combined_rounds_iu` | `intelligence_unit` | Combined-round base for VC round-size stats (median/quartile capital raised per company per stage) — base round + extensions summed, mega-rounds clustered | — |
 | `investors_iu` | `intelligence_unit` | Investor profiles, portfolio arrays, experience tags, LP relationships | — |
 | `people_iu` | `intelligence_unit` | Individuals — founder flags, founder scores, gender, education | — |
 | `people_organizations_iu` | `intelligence_unit` | Person ↔ org join table (roles, titles, tenure, founder flag) | — |
@@ -85,7 +86,9 @@ Entity locations array UNNEST → dim_locations_iu by name/id
   - `'Not meaningful'` (growth_stage = 5) — stage not applicable or indeterminate
   - (scalar `growth_stage` int also joins to `dim_tags_iu` where `tag_type = 'growth_stage'`)
 - `company_status`, `company_status_desc` — values: `'Operational'`, `'Acquired'`, `'Closed'` (others may exist). Use `company_status_desc` for filtering. Do NOT use `= 'Operational'` to mean "still alive" — that excludes Acquired companies; use `!= 'Closed'` instead.
-- `launch_year`, `launch_month`, `year_became_unicorn` — `launch_year` is the year the entity was founded/launched
+- `launch_year`, `launch_month` — `launch_year` is the year the entity was founded/launched
+- `year_became_vc_backed` — year the company first received VC backing (earliest VC round year); NULL if never VC-backed
+- `year_became_unicorn`, `year_became_thoroughbred` — year the company crossed the unicorn / thoroughbred threshold; NULL if it never did
 - `total_funding_usd`, `total_vc_funding_usd` — entity-level aggregates
 - `latest_valuation_usd`, `latest_valuation_eur`, `valuation_year`, `valuation_month` — most recent known company valuation (note: `latest_…`, not `last_…`). IPO/exit valuations live in `funding_iu.valuation_usd` with `flg_is_exit = TRUE`, not as a separate entity column.
 
@@ -141,6 +144,68 @@ All NUMERIC type. Access directly: `e.dealroom_signal.rating`
 Pre-filtered subset of `funding_iu` — contains only VC rounds and automatically excludes outside-tech and mature-stage companies at the table level. Same column structure as `funding_iu`. Use this when the query is purely about VC investment.
 
 Same date field rules apply: `year` and `month` integers, `amount_usd` for the amount, no `announced_on`.
+
+---
+
+## VC Combined Rounds Table (`vc_combined_rounds_iu`)
+
+Round-level base for **VC round-size analysis** (median / quartile / mean capital raised per company per stage). Methodology owner: Lorenzo Chiavarini (agreed 2026-07-23). **One row per combined round per company** — keyed by `entity_id`.
+
+**What a "combined round" is** (this is the key difference from `standardised_round_label` on `vc_funding_iu`):
+- A base round + **all its extensions** are summed into a single round, dated to its **earliest** year.
+- Unnamed mega-rounds (`LATE VC` or `GROWTH EQUITY VC` ≥ $100M with no standardised label) within 6 months of each other are **clustered** and folded into **Series C+**.
+- So `total_amount_usd` is the **total capital a company raised in that combined round**, not the size of a single funding event.
+
+**Fixed population** (already baked into the table — do not re-apply): verified VC rounds only (exits excluded); startups (`entity_type='organization'`, `organization_subtype='company'`) founded ≥ 1990; excludes Mature (`growth_stage <> 4`); round floor `amount_usd >= $1M`. All years included.
+
+**Grain is deliberately round-level, not pre-aggregated medians** — join `entity_id` → `entities_iu.id` and aggregate `total_amount_usd` to compute medians for any slice (geography, sector, health, year). A collapsed-medians table is intentionally not provided (medians can't be re-filtered).
+
+- `entity_id` — join to `entities_iu.id`
+- `year` — year of the earliest component of the combined round
+- `round_stage` — `'Seed'`, `'Series A'`, `'Series B'`, `'Series C+'` (Series C–I plus folded-in unnamed mega-rounds)
+- `combined_round_label` — underlying standardised label (e.g. `'SERIES C'`, `'LATE VC'`, `'GROWTH EQUITY VC'`) before bucketing into `round_stage`
+- `round_type` (STRING) — `'named'` (standardised base round + extensions) or `'unnamed_mega'` (clustered ≥ $100M `LATE VC`/`GROWTH EQUITY VC`)
+- `total_amount_usd` (FLOAT64) — total capital raised in the combined round (base + extensions, or clustered mega-round total), USD — **the value to aggregate**
+
+**Standard query — global medians by stage and year:**
+```sql
+SELECT
+  round_stage,
+  year,
+  CAST(ROUND(APPROX_QUANTILES(total_amount_usd, 100)[OFFSET(25)]) AS NUMERIC) AS percentile_25,
+  CAST(ROUND(APPROX_QUANTILES(total_amount_usd, 100)[OFFSET(50)]) AS NUMERIC) AS median,
+  ROUND(AVG(total_amount_usd), 2)                                             AS average,
+  CAST(ROUND(APPROX_QUANTILES(total_amount_usd, 100)[OFFSET(75)]) AS NUMERIC) AS percentile_75,
+  COUNT(*)                                                                    AS num_rounds
+FROM `omega-dahlia-347111.intelligence_unit.vc_combined_rounds_iu`
+WHERE year >= 2019
+GROUP BY round_stage, year
+ORDER BY
+  CASE round_stage WHEN 'Seed' THEN 1 WHEN 'Series A' THEN 2 WHEN 'Series B' THEN 3 ELSE 4 END,
+  year DESC;
+```
+
+**Filtered cut** — join `entities_iu` on `entity_id = e.id` and add a WHERE; everything else unchanged. Company attributes all live on `entities_iu`: geography via `UNNEST(locations)` where `flg_is_hq`; sector/tech via `UNNEST(sectors)`/`UNNEST(technologies)` on `LOWER(name)`; growth stage etc. as scalars. Example — EU deep-tech Series A median by year:
+```sql
+SELECT r.year,
+  CAST(ROUND(APPROX_QUANTILES(r.total_amount_usd, 100)[OFFSET(50)]) AS NUMERIC) AS median
+FROM `omega-dahlia-347111.intelligence_unit.vc_combined_rounds_iu` r
+JOIN `omega-dahlia-347111.intelligence_unit.entities_iu` e ON e.id = r.entity_id
+WHERE r.round_stage = 'Series A'
+  AND EXISTS (SELECT 1 FROM UNNEST(e.locations) loc
+              WHERE loc.flg_is_hq AND 'Europe' IN UNNEST(loc.country_region))
+  AND EXISTS (SELECT 1 FROM UNNEST(e.technologies) t WHERE LOWER(t.name) = 'deep tech')
+GROUP BY r.year
+ORDER BY r.year DESC;
+```
+> **Never pre-aggregate to a medians table and then filter it** — a collapsed median can't be re-filtered. Always filter at round grain, then aggregate.
+
+**Sanity numbers:** all-years medians ≈ Seed $2.5M · Series A $11M · Series B $21M · Series C+ $43M. ~145K rows / ~94K companies; min respects the $1M floor.
+
+**Caveats (upstream / by-design, not model bugs):**
+- **Transitive 6-month chaining:** a long string of mega-rounds each ≤ 6 months apart collapses into ONE combined round spanning well beyond 6 months (e.g. OpenAI's "2024" cluster reaches 2026 → $179.6B). Faithful to the reference.
+- **Extreme amounts:** a handful of rows > $10B are real mega-caps (OpenAI, Anthropic, xAI, Waymo…), at least one with a garbage source amount. Medians are unaffected; `AVG`/`SUM` are skewed — prefer medians/quartiles for headline stats.
+- **A few `year < 1990` rows** exist (impossible for companies founded ≥ 1990) — data errors; add `year >= 1990` for a clean floor.
 
 ---
 
