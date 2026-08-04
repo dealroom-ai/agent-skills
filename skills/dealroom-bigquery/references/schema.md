@@ -164,8 +164,48 @@ Round-level base for **VC round-size analysis** (median / quartile / mean capita
 - `year` — year of the earliest component of the combined round
 - `round_stage` — `'Seed'`, `'Series A'`, `'Series B'`, `'Series C+'` (Series C–I plus folded-in unnamed mega-rounds)
 - `combined_round_label` — underlying standardised label (e.g. `'SERIES C'`, `'LATE VC'`, `'GROWTH EQUITY VC'`) before bucketing into `round_stage`
-- `round_type` — `'named'` (standardised base round + extensions) or `'unnamed_mega'` (clustered ≥ $100M `LATE VC`/`GROWTH EQUITY VC`)
-- `total_amount_usd` — total capital raised in the combined round (base + extensions, or clustered mega-round total), USD
+- `round_type` (STRING) — `'named'` (standardised base round + extensions) or `'unnamed_mega'` (clustered ≥ $100M `LATE VC`/`GROWTH EQUITY VC`)
+- `total_amount_usd` (FLOAT64) — total capital raised in the combined round (base + extensions, or clustered mega-round total), USD — **the value to aggregate**
+
+**Standard query — global medians by stage and year:**
+```sql
+SELECT
+  round_stage,
+  year,
+  CAST(ROUND(APPROX_QUANTILES(total_amount_usd, 100)[OFFSET(25)]) AS NUMERIC) AS percentile_25,
+  CAST(ROUND(APPROX_QUANTILES(total_amount_usd, 100)[OFFSET(50)]) AS NUMERIC) AS median,
+  ROUND(AVG(total_amount_usd), 2)                                             AS average,
+  CAST(ROUND(APPROX_QUANTILES(total_amount_usd, 100)[OFFSET(75)]) AS NUMERIC) AS percentile_75,
+  COUNT(*)                                                                    AS num_rounds
+FROM `omega-dahlia-347111.intelligence_unit.vc_combined_rounds_iu`
+WHERE year >= 2019
+GROUP BY round_stage, year
+ORDER BY
+  CASE round_stage WHEN 'Seed' THEN 1 WHEN 'Series A' THEN 2 WHEN 'Series B' THEN 3 ELSE 4 END,
+  year DESC;
+```
+
+**Filtered cut** — join `entities_iu` on `entity_id = e.id` and add a WHERE; everything else unchanged. Company attributes all live on `entities_iu`: geography via `UNNEST(locations)` where `flg_is_hq`; sector/tech via `UNNEST(sectors)`/`UNNEST(technologies)` on `LOWER(name)`; growth stage etc. as scalars. Example — EU deep-tech Series A median by year:
+```sql
+SELECT r.year,
+  CAST(ROUND(APPROX_QUANTILES(r.total_amount_usd, 100)[OFFSET(50)]) AS NUMERIC) AS median
+FROM `omega-dahlia-347111.intelligence_unit.vc_combined_rounds_iu` r
+JOIN `omega-dahlia-347111.intelligence_unit.entities_iu` e ON e.id = r.entity_id
+WHERE r.round_stage = 'Series A'
+  AND EXISTS (SELECT 1 FROM UNNEST(e.locations) loc
+              WHERE loc.flg_is_hq AND 'Europe' IN UNNEST(loc.country_region))
+  AND EXISTS (SELECT 1 FROM UNNEST(e.technologies) t WHERE LOWER(t.name) = 'deep tech')
+GROUP BY r.year
+ORDER BY r.year DESC;
+```
+> **Never pre-aggregate to a medians table and then filter it** — a collapsed median can't be re-filtered. Always filter at round grain, then aggregate.
+
+**Sanity numbers:** all-years medians ≈ Seed $2.5M · Series A $11M · Series B $21M · Series C+ $43M. ~145K rows / ~94K companies; min respects the $1M floor.
+
+**Caveats (upstream / by-design, not model bugs):**
+- **Transitive 6-month chaining:** a long string of mega-rounds each ≤ 6 months apart collapses into ONE combined round spanning well beyond 6 months (e.g. OpenAI's "2024" cluster reaches 2026 → $179.6B). Faithful to the reference.
+- **Extreme amounts:** a handful of rows > $10B are real mega-caps (OpenAI, Anthropic, xAI, Waymo…), at least one with a garbage source amount. Medians are unaffected; `AVG`/`SUM` are skewed — prefer medians/quartiles for headline stats.
+- **A few `year < 1990` rows** exist (impossible for companies founded ≥ 1990) — data errors; add `year >= 1990` for a clean floor.
 
 ---
 
