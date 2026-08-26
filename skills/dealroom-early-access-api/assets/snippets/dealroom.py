@@ -16,10 +16,12 @@ load_dotenv()
 CLIENT_ID = os.environ["DEALROOM_CLIENT_ID"]
 CLIENT_SECRET = os.environ["DEALROOM_CLIENT_SECRET"]
 USER_AGENT = os.environ.get("DEALROOM_USER_AGENT")
-API_BASE = os.environ.get("DEALROOM_API_BASE", "https://api-next.beta.dealroom.co")
+API_BASE = os.environ.get("DEALROOM_API_BASE", "https://api.beta.dealroom.app")
 AUTH_URL = os.environ.get(
     "DEALROOM_AUTH_URL", "https://accounts.beta.dealroom.co/oauth/token"
 )
+# Deliberately NOT the API base URL: the Auth0 API identifier kept its legacy
+# api-next.*.dealroom.co value when the API host moved to api.*.dealroom.app.
 AUDIENCE = os.environ.get("DEALROOM_AUDIENCE", "https://api-next.beta.dealroom.co")
 
 
@@ -41,7 +43,7 @@ class DealroomClient:
         )
 
     def get(self, path: str, **kwargs):
-        url = f"{API_BASE}/api{path}"
+        url = f"{API_BASE}{path}"
         response = self._session.get(url, **kwargs)
         if response.status_code == 401:
             self._fetch_token()

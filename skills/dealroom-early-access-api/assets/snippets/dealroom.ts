@@ -23,11 +23,13 @@ const CLIENT_ID = requireEnv("DEALROOM_CLIENT_ID");
 const CLIENT_SECRET = requireEnv("DEALROOM_CLIENT_SECRET");
 const USER_AGENT = process.env.DEALROOM_USER_AGENT;
 const API_BASE = process.env.DEALROOM_API_BASE ??
-  "https://api-next.beta.dealroom.co";
+  "https://api.beta.dealroom.app";
 const AUTH_HOST = new URL(
   process.env.DEALROOM_AUTH_URL ??
     "https://accounts.beta.dealroom.co/oauth/token",
 );
+// Deliberately NOT the API base URL: the Auth0 API identifier kept its legacy
+// api-next.*.dealroom.co value when the API host moved to api.*.dealroom.app.
 const AUDIENCE = process.env.DEALROOM_AUDIENCE ??
   "https://api-next.beta.dealroom.co";
 
@@ -57,7 +59,7 @@ async function getToken(): Promise<string> {
 }
 
 export const dealroom: AxiosInstance = axios.create({
-  baseURL: `${API_BASE}/api`,
+  baseURL: API_BASE,
   headers: {
     "X-Client-Id": CLIENT_ID,
     ...(USER_AGENT ? { "User-Agent": USER_AGENT } : {}),

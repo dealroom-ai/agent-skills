@@ -3,13 +3,14 @@ name: dealroom-early-access-api
 description: >-
   Use this skill whenever the user is building against the Dealroom API OR asking
   you to look up Dealroom data conversationally (the next-gen REST API at
-  api-next.beta.dealroom.co) - querying companies, startups, investors, funds,
+  api.beta.dealroom.app) - querying companies, startups, investors, funds,
   founders, people, funding rounds, valuations, news, jobs, or any Dealroom data.
   Triggers on "I have a Dealroom API key", "query the Dealroom API", "fetch
   startups", "build a server-side VC/scouting dashboard", "funding analytics", and on
   one-off conversational lookups like "show me X from Dealroom", "top startups in
   <sector/region>", "who invested in <company>", "how much has <company> raised", or
-  any project that calls api-next.dealroom.co / api-next.beta.dealroom.co. Walks the
+  any project that calls api.dealroom.app / api.beta.dealroom.app (or the retired
+  api-next.dealroom.co / api-next.beta.dealroom.co hosts). Walks the
   user through Programmatic (M2M) API-key generation, sets up the OAuth2 client-credentials flow with
   automatic token refresh, picks the right endpoint for the question (transactional
   vs aggregate), and routes to the live OpenAPI spec and Mintlify docs. If the user
@@ -37,7 +38,7 @@ Two failure modes cause almost every stuck integration. Avoid both:
 
 1. **Don't guess endpoint paths, filter keys, or operator syntax.** Hallucinated names
    that "look right" return empty results or `400`s. Discover filters at runtime with
-   `GET /api/reference/filters?scope=<scope>` and confirm shapes against the OpenAPI spec.
+   `GET /reference/filters?scope=<scope>` and confirm shapes against the OpenAPI spec.
 2. **Don't default to aggregate endpoints.** This is the most common mistake. Most
    questions want *records*, not a computed statistic. See below.
 
@@ -62,21 +63,21 @@ enrich or count a result set.
 
 | The user wants                                                   | Use                                                                | Not                          |
 | ---------------------------------------------------------------- | ------------------------------------------------------------------ | ---------------------------- |
-| A list of companies / investors / people matching criteria       | `GET /api/data/entities` (or `/data/investors`, `/data/founders`, `/data/people`) | aggregate     |
+| A list of companies / investors / people matching criteria       | `GET /data/entities` (or `/data/investors`, `/data/founders`, `/data/people`) | aggregate     |
 | The "top N by funding / valuation / signal"                      | list + `sort=-<field>` + `limit=N`                                 | aggregate group_by           |
-| Everything about one entity                                      | `GET /api/data/entities/{id}`                                      | aggregate                    |
-| One entity's rounds / valuations / investors / portfolio / team  | typed collections (see below): `GET /api/data/companies/{id}/{funding-rounds,valuations,investors,team}`, `/api/data/investors/{id}/{portfolio,funds}` | aggregate |
-| All funding rounds matching criteria                             | `GET /api/data/transactions`                                       | aggregate                    |
-| All valuations matching criteria (cross-entity)                  | `GET /api/data/valuations`                                         | aggregate                    |
-| Fund vehicles investor firms have raised (cross-manager)         | `GET /api/data/funds`                                              | `/api/data/investors`        |
-| Points to plot on a map                                          | `GET /api/data/{companies,investors,universities}/geo` (slim dots; see below) | a full list call you then thin client-side |
+| Everything about one entity                                      | `GET /data/entities/{id}`                                      | aggregate                    |
+| One entity's rounds / valuations / investors / portfolio / team  | typed collections (see below): `GET /data/companies/{id}/{funding-rounds,valuations,investors,team}`, `/data/investors/{id}/{portfolio,funds}` | aggregate |
+| All funding rounds matching criteria                             | `GET /data/transactions`                                       | aggregate                    |
+| All valuations matching criteria (cross-entity)                  | `GET /data/valuations`                                         | aggregate                    |
+| Fund vehicles investor firms have raised (cross-manager)         | `GET /data/funds`                                              | `/data/investors`        |
+| Points to plot on a map                                          | `GET /data/{companies,investors,universities}/geo` (slim dots; see below) | a full list call you then thin client-side |
 | How many entities match (just the count)                         | the list call's `page.total` (`include_total=true`)                | an aggregate for a bare count |
-| A count / sum / avg / median grouped by a dimension              | `GET /api/analytics/aggregate/{source}`                            | paging the list and reducing client-side |
-| Several metrics at once (KPIs, leaderboards)                     | `GET /api/analytics/aggregate/{source}/multi-metric`               | many separate calls          |
-| A 2D matrix, stage transitions, or a per-year trend              | `GET /api/analytics/funding-analytics/{heatmap,round-transitions,funnel}`, `/api/analytics/timeseries` |        |
-| Fuzzy name lookup ("find Stripe")                                | `GET /api/data/search` (all five collections; narrow with `types=`) | an `/api/data/entities` name filter |
-| Ranked investor recommendations for a target company             | `GET /api/analytics/matching/investors`                            | hand-rolled portfolio-overlap queries |
-| Companies / investors similar to a given one                     | `GET /api/data/companies/{id}/similar`, `/api/data/investors/{id}/similar` | building your own tag-overlap ranking |
+| A count / sum / avg / median grouped by a dimension              | `GET /analytics/aggregate/{source}`                            | paging the list and reducing client-side |
+| Several metrics at once (KPIs, leaderboards)                     | `GET /analytics/aggregate/{source}/multi-metric`               | many separate calls          |
+| A 2D matrix, stage transitions, or a per-year trend              | `GET /analytics/funding-analytics/{heatmap,round-transitions,funnel}`, `/analytics/timeseries` |        |
+| Fuzzy name lookup ("find Stripe")                                | `GET /data/search` (all five collections; narrow with `types=`; returns a flat `data` array, each row carries its `type`) | a `/data/entities` name filter |
+| Ranked investor recommendations for a target company             | `GET /analytics/matching/investors`                            | hand-rolled portfolio-overlap queries |
+| Companies / investors similar to a given one                     | `GET /data/companies/{id}/similar`, `/data/investors/{id}/similar` | building your own tag-overlap ranking |
 
 **Anti-patterns:**
 
@@ -86,27 +87,27 @@ enrich or count a result set.
 - **Aggregating one entity.** Profile data lives on the typed-collection sub-resources
   (see below).
 - **The reverse mistake:** paging thousands of list rows to sum/average client-side. That
-  is exactly what `GET /api/analytics/aggregate/{source}` is for.
+  is exactly what `GET /analytics/aggregate/{source}` is for.
 
 **Relationship sub-resources are facet-scoped by entity type.** They are *not* on
-`/api/data/entities/{id}` (that path carries only the detail record plus `lp-funds`).
+`/data/entities/{id}` (that path carries only the detail record plus `lp-funds`).
 Read the entity's `type` / `organization_subtype` / `is_investor` / `is_founder` flags
 from the detail payload, then call the matching typed collection. The paths are static
 and knowable:
 
-- **Companies** (`/api/data/companies/{id}/`): `funding-rounds`, `valuations`,
+- **Companies** (`/data/companies/{id}/`): `funding-rounds`, `valuations`,
   `financials`, `investors`, `team`, `headcount-breakdown`, `web-traffic`, `similar`
-- **Investors** (`/api/data/investors/{id}/`): `portfolio`, `funds`,
+- **Investors** (`/data/investors/{id}/`): `portfolio`, `funds`,
   `lp-funds`, `team`, `similar`
-- **People / founders / universities**: `/api/data/people/{id}/career`,
-  `/api/data/founders/{id}/founded-companies`, `/api/data/universities/{id}/alumni`,
+- **People / founders / universities**: `/data/people/{id}/career`,
+  `/data/founders/{id}/founded-companies`, `/data/universities/{id}/alumni`,
   and `team` on universities / gov-ngo
 
 The `similar` collections rank by weighted tag overlap (force-sorted by score), accept
 the full company/investor filter DSL to narrow the pool, and use offset pagination
 capped at `offset + limit <= 1000`.
 
-**Map points have their own slim lens.** `GET /api/data/{companies,investors,universities}/geo`
+**Map points have their own slim lens.** `GET /data/{companies,investors,universities}/geo`
 returns one point per entity (id, name, coordinates) instead of the full list payload, takes
 the same `filter` as its list endpoint, and accepts `size_by=<numeric dimension>` (e.g.
 `total_funding`, `employee_count`, `latest_valuation`, `total_invested`,
@@ -114,8 +115,8 @@ the same `filter` as its list endpoint, and accepts `size_by=<numeric dimension>
 `value` for proportional sizing. `size_by` also sorts descending, so a capped response keeps
 the highest-value points; entities without usable coordinates are omitted. For per-area
 counts (a choropleth rather than dots) use
-`GET /api/analytics/aggregate/companies?metric=count&group_by=map_area` instead. The older
-generic `GET /api/data/entities/geo` still exists (no `size_by`, higher limits) but prefer
+`GET /analytics/aggregate/companies?metric=count&group_by=map_area` instead. The older
+generic `GET /data/entities/geo` still exists (no `size_by`, higher limits) but prefer
 the per-collection endpoints.
 
 ## Setup
@@ -125,9 +126,11 @@ Step 3 is only for app builds (see [Two ways to call the API](#two-ways-to-call-
 
 1. **Generate an API key (the user must do this).** Auth0 needs a logged-in browser, so
    you cannot do it for them. Tell them: open
-   <https://app-next.beta.dealroom.co/settings/api>, click **+ Create key**, choose
+   <https://beta.dealroom.app/settings/api>, click **+ Create key**, choose
    **Programmatic (M2M)**, and copy both `client_id` and `client_secret` (the secret is
-   shown only once).
+   shown only once). The API is in closed beta: if that page shows a waitlist sign-up
+   instead of **+ Create key**, the account has no API access yet - the user should join
+   the waitlist and wait for the enablement email; there is no way around this gate.
 2. **Store the credentials in `.env`.** Copy `assets/.env.example` and fill in
    `DEALROOM_CLIENT_ID` and `DEALROOM_CLIENT_SECRET`. Optionally set
    `DEALROOM_USER_AGENT` for server-side observability. Confirm `.env` is in `.gitignore`.
@@ -151,13 +154,16 @@ project, no snippet.
 
 ```bash
 # Load credentials and mint a token ONCE per session (24h lifetime); reuse $TOKEN after.
+# NOTE: the audience is NOT the API base URL - it stays the legacy Auth0 API
+# identifier (https://api-next.beta.dealroom.co) even though requests go to
+# api.beta.dealroom.app. See the environment table below.
 set -a && . ./.env && set +a
 TOKEN=$(curl -s https://accounts.beta.dealroom.co/oauth/token \
   -H 'Content-Type: application/json' \
   -d "{\"grant_type\":\"client_credentials\",\"client_id\":\"$DEALROOM_CLIENT_ID\",\"client_secret\":\"$DEALROOM_CLIENT_SECRET\",\"audience\":\"https://api-next.beta.dealroom.co\"}" \
   | jq -r .access_token)
 
-curl -s -G 'https://api-next.beta.dealroom.co/api/data/entities' \
+curl -s -G 'https://api.beta.dealroom.app/data/entities' \
   --data-urlencode 'filter=and(organization_subtype[eq]:company,tag_id[in_any]:42|99)' \
   --data-urlencode 'sort=-total_funding' --data-urlencode 'limit=5' \
   -H "Authorization: Bearer $TOKEN" -H "X-Client-Id: $DEALROOM_CLIENT_ID" | jq
@@ -204,14 +210,21 @@ credentials did not apply.** Fix the headers; do not report the nulls as missing
 callers are exempt from field redaction and from the per-tier page-size and pagination-depth
 caps below, so a correctly authenticated response has neither marker.
 
-The default environment is **beta**. For other environments, swap the base URL and Auth0
-host (the OAuth2 `audience` equals the API base URL):
+The default environment is **beta**. For other environments, swap the base URL, Auth0
+host, and audience per this table. **The OAuth2 `audience` is NOT the API base URL** on
+beta/production: the platform moved to `dealroom.app` but the Auth0 API identifier kept
+its legacy `api-next.*.dealroom.co` value. Minting a token with the base URL as audience
+fails.
 
-| Environment | API base URL                            | Auth0 host                      |
-| ----------- | --------------------------------------- | ------------------------------- |
-| Beta        | `https://api-next.beta.dealroom.co`     | `accounts.beta.dealroom.co`     |
-| Production  | `https://api-next.dealroom.co`          | `accounts.dealroom.co`          |
-| Staging     | `https://api-next.staging.dealroom.dev` | `accounts.staging.dealroom.dev` |
+| Environment | API base URL                             | Auth0 host                      | OAuth2 `audience`                        |
+| ----------- | ---------------------------------------- | ------------------------------- | ---------------------------------------- |
+| Beta        | `https://api.beta.dealroom.app`          | `accounts.beta.dealroom.co`     | `https://api-next.beta.dealroom.co`      |
+| Production  | `https://api.dealroom.app`               | `accounts.dealroom.co`          | `https://api-next.dealroom.co`           |
+| Staging     | `https://api-next.staging.dealroom.dev`  | `accounts.staging.dealroom.dev` | `https://api-next.staging.dealroom.dev`  |
+
+The former `api-next.beta.dealroom.co` / `api-next.dealroom.co` **hosts** are retired
+and no longer serve traffic - update any old base URLs to the `dealroom.app` hosts. The
+strings live on only as Auth0 audience identifiers.
 
 ## API versioning
 
@@ -220,6 +233,12 @@ header to pin behavior; **omit it to get the latest version** (what new integrat
 should do). Clients pinned to an older date keep their old request/response shapes via
 server-side transforms until that version's sunset date, so existing code does not break
 when the API moves.
+
+**There is no `/api` path prefix.** Every namespace is served at the root of the API
+host: `/data/*`, `/analytics/*`, `/reference/*`, `/platform/*`, `/system/*`. Old
+`/api/*` URLs from earlier integrations are permanently redirected (`308`, all
+versions, no sunset), so they still work - but write new code against the root paths
+and drop `/api` from any base URL you find in existing code.
 
 Every breaking change, deprecation, and addition is listed in the
 **[changelog](https://developers.beta.dealroom.co/changelog)** with the version
@@ -273,16 +292,16 @@ There are two ID families - never mix them up:
 Discover and resolve at runtime:
 
 ```bash
-GET /api/reference/filters?scope=companies              # valid filter keys, operators, types, data status
-GET /api/reference/filters/location/values?q=netherlands   # resolve a location to its ID
-GET /api/reference/filters/tag_id/values?q=climate         # resolve a tag across ALL taxonomy types
-GET /api/reference/filters/search?q=climate&scope=companies  # one-shot value search across every filter key
+GET /reference/filters?scope=companies              # valid filter keys, operators, types, data status
+GET /reference/filters/location/values?q=netherlands   # resolve a location to its ID
+GET /reference/filters/tag_id/values?q=climate         # resolve a tag across ALL taxonomy types
+GET /reference/filters/search?q=climate&scope=companies  # one-shot value search across every filter key
 ```
 
 Valid scopes: `companies`, `investors`, `transactions`, `people`, `universities`, `news`,
 `jobs`. Cache resolved IDs in your app; taxonomy changes rarely.
 
-**Build filters from `filter_key`, not the displayed `key`.** `/api/reference/filters` returns tag
+**Build filters from `filter_key`, not the displayed `key`.** `/reference/filters` returns tag
 entries whose `key` is category-qualified (`tag_id:sector`, `tag_id:industry`,
 `tag_id:technology`, ...) but whose `filter_key` is the bare `tag_id`. The filter grammar
 only accepts the bare form: `tag_id[eq]:2181301` works; `tag_id:sector[eq]:2181301` throws
@@ -320,36 +339,38 @@ not paste whole pages or the full spec into context.
 
 | Need                                          | Where                                                                  |
 | --------------------------------------------- | ---------------------------------------------------------------------- |
-| Enumerate namespaces / resources at runtime   | `GET /api` lists the five namespaces; each namespace index (`GET /api/data`, `GET /api/analytics`, ...) lists its resources |
-| Exact request/response shape for any endpoint | `https://api-next.beta.dealroom.co/openapi` (then `jq '.paths | keys'`, then `jq '.paths["/api/<path>"]'`) |
-| Swagger UI                                    | `https://api-next.beta.dealroom.co/docs`                               |
+| Enumerate namespaces / resources at runtime   | `GET /` lists the five namespaces; each namespace index (`GET /data`, `GET /analytics`, ...) lists its resources |
+| Exact request/response shape for any endpoint | `https://developers.beta.dealroom.co/openapi.yaml` (raw OpenAPI, YAML - slice with `yq '.paths | keys'` / `yq '.paths["/<path>"]'`, or convert to JSON for `jq`) |
+| Browsable endpoint reference                  | the **API Reference** tab on `https://developers.beta.dealroom.co` (the API host's `/docs` redirects there; the old on-host Swagger UI at `/openapi` is no longer public) |
 | Guides + concepts (filtering, aggregates, pagination, rate limits) | `https://developers.beta.dealroom.co` |
 | Full filter + sorting catalog                 | `https://developers.beta.dealroom.co/references/filters-and-sorting` |
 | Known limitations (stub / no-data endpoints + filters) | `https://developers.beta.dealroom.co/concepts/known-limitations` |
 | Changelog (breaking changes, deprecations, new features per version) | `https://developers.beta.dealroom.co/changelog` |
+| MCP server (Dealroom data as MCP tools for agent clients) | `https://developers.beta.dealroom.co/agent-apis/mcp` |
 
 Some advertised endpoints and filters are stubbed or not fully data-loaded yet, and the
 set changes over time. Check the known-limitations page, the `x-data-status` extension in
 the OpenAPI spec, or the `data_status` field from
-`GET /api/reference/filters?scope=<scope>` before relying on a surface in production.
+`GET /reference/filters?scope=<scope>` before relying on a surface in production.
 
 ## Common errors
 
 | Symptom                                       | Cause and fix                                                              |
 | --------------------------------------------- | -------------------------------------------------------------------------- |
 | `401 Unauthorized`                            | Token expired (24h). The snippet auto-refreshes.                           |
-| `401` that persists after one refresh         | The key was deactivated or deleted. Re-minting will not help; ask the user to check <https://app-next.beta.dealroom.co/settings/api>. |
+| `401` that persists after one refresh         | The key was deactivated or deleted. Re-minting will not help; ask the user to check <https://beta.dealroom.app/settings/api>. |
 | `400` mentioning `X-Client-Id`                | The required client-id header is missing or does not match the token.        |
-| `400` / `UNKNOWN_FILTER`                      | Filter key wrong for this scope. Call `GET /api/reference/filters?scope=<scope>`. |
+| `400` / `UNKNOWN_FILTER`                      | Filter key wrong for this scope. Call `GET /reference/filters?scope=<scope>`. |
+| `400` / `FILTER_VALIDATION_ERROR`             | Enum filter value outside the known set (`round_type`, `investor_type`, `article_type`, ...). Values match case-insensitively by display name or code; discover them via `GET /reference/filters/{key}/values`. |
 | `400` / `PAGINATION_DEPTH_EXCEEDED`           | `offset + limit` past the tier depth cap (non-M2M only). Narrow the filter and partition the query instead of paging deeper. |
 | `200` with nulled fields and a `locked[]`     | The call was treated as anonymous or free. Your credentials did not apply - fix the headers. |
-| Empty `data: []` from a sane-looking filter   | The value did not resolve to a real ID. Look it up via `/api/reference/filters/{key}/values`. |
+| Empty `data: []` from a sane-looking filter   | The value did not resolve to a real ID. Look it up via `/reference/filters/{key}/values`. |
 | `429 Too Many Requests`                       | Rate limit. Back off, honor `Retry-After`, cache taxonomy lookups.         |
 | `504`                                         | 15s query timeout. Narrow the filter or set `include_total=false`.         |
 
 ## Early access: data caveat
 
-This skill targets `api-next.beta.dealroom.co`, where data may be refreshed or partially
+This skill targets `api.beta.dealroom.app`, where data may be refreshed or partially
 loaded. If a single result looks off, say so honestly rather than inventing an explanation,
 and sanity-check the same query in the production Dealroom UI before debugging further.
 
@@ -366,18 +387,20 @@ Treat these as drift signals (not normal data issues):
 - The response envelope differs from what is described (e.g. `page` renamed, fields
   missing or restructured, `data` shape changed).
 - Valid credentials no longer authenticate (header names, audience, or token flow changed).
-- `GET /api/reference/filters?scope=<scope>` or `/openapi` advertise endpoints/filters this skill
+- `GET /reference/filters?scope=<scope>` or the published OpenAPI spec
+  (`developers.beta.dealroom.co/openapi.yaml`) advertise endpoints/filters this skill
   does not mention, or omit ones it does.
 
 When you hit one:
 
 1. **Do not paper over it** with hardcoded values, guessed keys, or silent workarounds.
-2. **Confirm against the source of truth:** `GET /api/reference/filters?scope=<scope>` for filters,
-   `/openapi` for paths and shapes. A one-off `400`/`5xx` or empty result is usually data,
-   not drift; a structural mismatch is reproducible.
+2. **Confirm against the source of truth:** `GET /reference/filters?scope=<scope>` for filters,
+   the published OpenAPI spec (`developers.beta.dealroom.co/openapi.yaml`) for paths and
+   shapes. A one-off `400`/`5xx` or empty result is usually data, not drift; a structural
+   mismatch is reproducible.
 3. **If the live state genuinely diverges from this skill, stop and tell the user
    plainly**, for example: "The Dealroom API now behaves differently from what the
    `dealroom-early-access-api` skill describes (`<what changed>`). I verified this against
-   `/api/reference/filters` and `/openapi`. The skill looks out of date." Then proceed using the live
+   `/reference/filters` and the published OpenAPI spec. The skill looks out of date." Then proceed using the live
    behavior, and recommend the user update the skill (or open a PR to
    `dealroom-ai/agent-skills`) so it stays accurate.
