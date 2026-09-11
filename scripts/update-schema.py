@@ -9,12 +9,14 @@ get an empty data_type and are reported so you know a `dbt run` is still pending
 
 Usage:
     python3 scripts/update-schema.py                    # rewrite schema.json + diff
-    python3 scripts/update-schema.py --check            # diff only, don't write
+    python3 scripts/update-schema.py --check            # diff schema.json only, don't write
     python3 scripts/update-schema.py --no-types         # skip BigQuery, yml only
     python3 scripts/update-schema.py --dbt-repo PATH     # point at your dbt clone
 
 The dbt repo path resolves from --dbt-repo, then $DBT_REPO, then a few common
-locations. schema.md is hand-written narrative and is NOT touched.
+locations. Curated tables not in dbt are listed in NON_DBT (types from BigQuery,
+descriptions inline). schema.md is hand-written EXCEPT its GENERATED COLUMN INDEX
+block, which a normal run rewrites from schema.json; --check does not validate it.
 """
 import json, subprocess, sys, os, re
 from pathlib import Path
@@ -144,15 +146,14 @@ def build(repo, use_types):
             rows.append({"table_name": t, "column_name": c,
                          "description": yml_desc.get((t, c), ""), "data_type": dt})
 
-    # Curated non-dbt tables: inline descriptions + BigQuery types.
+    # Curated non-dbt tables: inline descriptions + BigQuery types. A missing type
+    # here means the curated table isn't in BigQuery — not a pending dbt build — so
+    # these are NOT added to `pending` (which points maintainers at dbt).
     for _, tbls in NON_DBT.items():
         for t, coldescs in tbls.items():
             for c, desc in coldescs.items():
-                dt = types.get((t, c), "")
-                if use_types and not dt:
-                    pending.append((t, c))
                 rows.append({"table_name": t, "column_name": c,
-                             "description": desc, "data_type": dt})
+                             "description": desc, "data_type": types.get((t, c), "")})
     return rows, pending, undocumented
 
 
