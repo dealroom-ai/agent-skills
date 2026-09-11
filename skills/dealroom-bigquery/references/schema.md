@@ -420,6 +420,40 @@ FROM candidates
 GROUP BY id, name;
 ```
 
+### Ranking regions (e.g. deep-tech ranking)
+
+Once each company carries a `main_hq_region`, rank regions by any filtered company set. Below: **deep-tech companies by region** (deep tech = `technologies` id `6`; swap for science-based `22969`, hard tech `22390`, or any sector/tech tag). Replace `COUNT(*)` with the metric you want to rank on (`SUM(total_vc_funding_usd)`, unicorn count via `flg_is_unicorn`, etc.), and add the usual VC/EV default exclusions when ranking on funding or valuation.
+
+```sql
+WITH company_hq AS (
+  SELECT e.id,
+         ARRAY_CONCAT([loc.city_unique_id, loc.state_unique_id, loc.country_unique_id],
+                      loc.city_region_unique_ids, loc.country_region_unique_ids) AS hq_loc_ids
+  FROM `omega-dahlia-347111.intelligence_unit.entities_iu` e, UNNEST(e.locations) loc
+  WHERE loc.flg_is_hq
+    AND EXISTS (SELECT 1 FROM UNNEST(e.technologies) t WHERE t.id = 6)   -- deep tech
+),
+candidates AS (
+  SELECT c.id, m.main_hq_region, m.location_type
+  FROM company_hq c
+  JOIN `omega-dahlia-347111.intelligence_unit.main_hq_regions` m
+    ON m.dim_locations_iu_unique_id IN UNNEST(c.hq_loc_ids)
+  WHERE m.source = 'curated'
+),
+company_region AS (
+  SELECT id, ARRAY_AGG(main_hq_region ORDER BY
+           CASE location_type WHEN 'city_region' THEN 1 WHEN 'city' THEN 2
+                              WHEN 'state' THEN 3 ELSE 4 END
+         LIMIT 1)[OFFSET(0)] AS main_hq_region
+  FROM candidates GROUP BY id
+)
+SELECT main_hq_region, COUNT(*) AS deep_tech_companies,
+       RANK() OVER (ORDER BY COUNT(*) DESC) AS rnk
+FROM company_region GROUP BY main_hq_region ORDER BY rnk;
+```
+
+Top of the deep-tech result: Bay Area (4,500), Greater London (1,688), New York Metro (1,586), Greater Tel Aviv (1,381), Greater Boston (1,214).
+
 ⚠ Because this table is not in dbt, `update-schema.py` does not manage it and its columns are absent from `schema.json` — rely on this section for column names, and re-check the live table if the curation changes.
 
 ---
