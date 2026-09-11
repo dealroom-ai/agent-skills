@@ -27,6 +27,7 @@
 | `dim_lists_iu` | `intelligence_unit` | Lists / landscapes — curated entity collections with categories | — |
 | `dim_tags_iu` | `intelligence_unit` | Unified tag taxonomy (sectors, technologies, industries, sub_industries, SDGs, …) | — |
 | `dim_locations_iu` | `intelligence_unit` | Hierarchical location dimension (continent → country_region → country → state → city) | — |
+| `main_hq_regions` | `intelligence_unit` | **Curated** dimension of canonical "main HQ regions" (mostly `city_region`, e.g. Bay Area, Greater London); maps a `dim_locations_iu` id → one headline region. **Not a dbt model** — see its section | ~308 |
 | `dim_currency_rates_iu` | `intelligence_unit` | FX rates (EUR and USD) | — |
 | `eco_index_cities` | `dealroom_intelligence` | Global Tech Ecosystem Index benchmarking | — |
 | `dim_microapps_locations` | `dealroom_intelligence` | High-value locations only (use when user asks for curated/high-value hubs) | — |
@@ -377,6 +378,49 @@ Active job openings per entity. Join `entity_id` to `entities_iu.id`. Coverage i
 - `date_posted` (TIMESTAMP), `expired_date` (TIMESTAMP)
 - `salary_min`, `salary_max` (FLOAT64), `currency` (STRING) — sparse
 - `department` (STRING), `contract_type` (STRING) — sparse
+
+---
+
+## Main HQ Regions Table (`main_hq_regions`)
+
+**Curated** lookup that assigns each `dim_locations_iu` location to a single canonical **main HQ region** — the headline region a company's HQ rolls up to (mostly metro `city_region`s like Bay Area, Greater London, Ile-de-France). ~308 rows. **Not a dbt model** — hand-curated and loaded directly into BigQuery, so its columns are documented here (not generated into `schema.json`).
+
+- `dim_locations_iu_unique_id` (INT64) — join key → `dim_locations_iu.unique_id`
+- `location_type` (STRING) — granularity of this region: `city_region` (most), `city`, `state`, `country`
+- `main_hq_region` (STRING) — the region's canonical name (equals the `dim_locations_iu.name`)
+- `company_count` (INT64) — companies HQ'd in this region (per the curation)
+- `source` (STRING) — provenance / quality flag: `curated` (trusted), `uncurated` (auto-matched, lower confidence), plus a few carrying a `... verify` note. **Filter `source = 'curated'`** for clean analyses.
+
+### How to use it — assign a company to its main HQ region
+
+The table is region-level; map a company in by matching **any of its HQ location's unique ids** against `dim_locations_iu_unique_id`. A company's HQ (`entities_iu.locations` where `flg_is_hq`) carries several ids — the scalar `city/state/country_unique_id` plus the `city_region_unique_ids` / `country_region_unique_ids` arrays. Matches are ~1:1 (only ~0.17% of companies match more than one region); when several match, **prefer the most specific** (`city_region` → `city` → `state` → `country`).
+
+```sql
+WITH company_hq AS (
+  SELECT e.id, e.name,
+         ARRAY_CONCAT(
+           [loc.city_unique_id, loc.state_unique_id, loc.country_unique_id],
+           loc.city_region_unique_ids, loc.country_region_unique_ids) AS hq_loc_ids
+  FROM `omega-dahlia-347111.intelligence_unit.entities_iu` e, UNNEST(e.locations) loc
+  WHERE loc.flg_is_hq
+),
+candidates AS (
+  SELECT c.id, c.name, m.main_hq_region, m.location_type
+  FROM company_hq c
+  JOIN `omega-dahlia-347111.intelligence_unit.main_hq_regions` m
+    ON m.dim_locations_iu_unique_id IN UNNEST(c.hq_loc_ids)
+  -- WHERE m.source = 'curated'   -- add for clean-only
+)
+SELECT id, name,
+       ARRAY_AGG(main_hq_region ORDER BY
+         CASE location_type WHEN 'city_region' THEN 1 WHEN 'city' THEN 2
+                            WHEN 'state' THEN 3 ELSE 4 END
+       LIMIT 1)[OFFSET(0)] AS main_hq_region
+FROM candidates
+GROUP BY id, name;
+```
+
+⚠ Because this table is not in dbt, `update-schema.py` does not manage it and its columns are absent from `schema.json` — rely on this section for column names, and re-check the live table if the curation changes.
 
 ---
 
