@@ -146,7 +146,7 @@
   {
     "table_name": "entities_iu",
     "column_name": "flg_is_verified",
-    "description": "Flag indicating if the entity is verified",
+    "description": "Flag indicating if the entity is verified. Do NOT filter companies on this - verified-ness is a rounds concept (funding-side flg_is_verified), and even there only when the user asks for verified rounds",
     "data_type": "BOOL"
   },
   {
@@ -1142,7 +1142,7 @@
   {
     "table_name": "funding_iu",
     "column_name": "flg_is_vc_round",
-    "description": "Flag indicating if this is a venture capital round",
+    "description": "Flag indicating if this is a venture capital round. This flag alone is the complete VC selection - it already excludes grants, SPAC private placements, debt and convertibles; never add round NOT IN (...) on top",
     "data_type": "BOOL"
   },
   {
@@ -1322,7 +1322,7 @@
   {
     "table_name": "vc_funding_iu",
     "column_name": "flg_is_vc_round",
-    "description": "Flag indicating if this is a venture capital round",
+    "description": "Flag indicating if this is a venture capital round. This flag alone is the complete VC selection - it already excludes grants, SPAC private placements, debt and convertibles; never add round NOT IN (...) on top",
     "data_type": "BOOL"
   },
   {
