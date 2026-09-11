@@ -132,7 +132,7 @@ All NUMERIC type. Access directly: `e.dealroom_signal.rating`
 - `amount_usd` (NUMERIC) — round amount in USD
 - `round` (STRING) — primary round classifier, always populated. Exact production values (no others exist — do not invent labels): SEED, ACQUISITION, GRANT, EARLY VC, SERIES A, IPO, DEBT, SERIES B, SUPPORT PROGRAM, SPINOUT, ANGEL, POST IPO EQUITY, LATE VC, GROWTH EQUITY VC, SERIES C, POST IPO DEBT, GROWTH EQUITY NON VC, CONVERTIBLE, BUYOUT, PRIVATE PLACEMENT NON VC, SERIES D, SECONDARY, MERGER, SERIES E, POST IPO CONVERTIBLE, PRIVATE PLACEMENT VC, ICO, BANKRUPTCY, CORPORATE SPINOUT, SERIES F, SPAC IPO, 'PROJECT, REAL ESTATE, INFRASTRUCTURE FINANCE', LENDING CAPITAL, MEDIA FOR EQUITY, SPAC PRIVATE PLACEMENT, SERIES G, POST IPO SECONDARY, SERIES H, SERIES I. ⚠ `MERGER/ACQUISITION`, `DEBT FINANCING`, `CONVERTIBLE NOTE`, `SECONDARY MARKET` and bare `GROWTH EQUITY` do **NOT** exist — filtering on them silently returns zero rows. `PRE-SEED` is a `standardised_round_label` value only, never a `round`. The four exit values are ACQUISITION, IPO, BUYOUT, SPAC IPO.
 - `standardised_round_label` (STRING) — granular VC equity label. More precise (MICRO-SEED, PRE-SEED, SEED, SEED+, SEED EXTENSION, SERIES A, SERIES A EXTENSION, etc.) but NULL for ~790K of ~1M rows. Use only when you need precise stage breakdowns within VC rounds.
-- `flg_is_vc_round` (BOOLEAN) — TRUE for VC rounds. **This flag alone is the complete VC-round selection**: it already excludes grants, SPAC private placements, debt and convertibles — never add `round NOT IN (…)` on top of it
+- `flg_is_vc_round` (BOOLEAN) — TRUE for VC rounds. **This flag already excludes grants, SPAC private placements and debt** (verified: 0 such rounds are flagged), so `round NOT IN ('SPAC PRIVATE PLACEMENT','GRANT')` on top of it is redundant. ⚠ It does **not** exclude `CONVERTIBLE` rounds (~10.6k are flagged VC — convertible notes are VC financing); only add a `round NOT IN` filter if you specifically need to drop convertibles
 - `flg_is_vc_backed_round` (BOOLEAN) — TRUE for VC-backed defining rounds
 - `flg_is_pe_round` (BOOLEAN) — TRUE for private equity rounds (BUYOUT or GROWTH EQUITY NON VC)
 - `flg_is_funding_round` (BOOLEAN) — TRUE for all funding rounds (including debt, grants)
@@ -383,80 +383,32 @@ Active job openings per entity. Join `entity_id` to `entities_iu.id`. Coverage i
 
 ## Main HQ Regions Table (`main_hq_regions`)
 
-**Curated** lookup that assigns each `dim_locations_iu` location to a single canonical **main HQ region** — the headline region a company's HQ rolls up to (mostly metro `city_region`s like Bay Area, Greater London, Ile-de-France). ~308 rows. **Not a dbt model** — hand-curated and loaded directly into BigQuery, so its columns are documented here (not generated into `schema.json`).
+**Curated** lookup that assigns each `dim_locations_iu` location to a single canonical **main HQ region** — the headline region a company's HQ rolls up to (mostly metro `city_region`s like Bay Area, Greater London, Ile-de-France). ~308 rows. **Not a dbt model** — hand-curated and loaded directly into BigQuery; its columns are pulled into `schema.json` by `update-schema.py` (types from BigQuery, descriptions curated), so they grep like any other table.
 
 - `dim_locations_iu_unique_id` (INT64) — join key → `dim_locations_iu.unique_id`
 - `location_type` (STRING) — granularity of this region: `city_region` (most), `city`, `state`, `country`
 - `main_hq_region` (STRING) — the region's canonical name (equals the `dim_locations_iu.name`)
 - `company_count` (INT64) — companies HQ'd in this region (per the curation)
-- `source` (STRING) — provenance / quality flag: `curated` (trusted), `uncurated` (auto-matched, lower confidence), plus a few carrying a `... verify` note. **Filter `source = 'curated'`** for clean analyses.
+- `source` (STRING) — provenance / quality flag: `curated` (trusted), `uncurated` (auto-matched, lower confidence), plus a few carrying a `… verify` note. **Filter `source = 'curated'`** for clean analyses.
 
-### How to use it — assign a company to its main HQ region
+### How to use it (region rankings, e.g. deep-tech-by-region)
 
-The table is region-level; map a company in by matching **any of its HQ location's unique ids** against `dim_locations_iu_unique_id`. A company's HQ (`entities_iu.locations` where `flg_is_hq`) carries several ids — the scalar `city/state/country_unique_id` plus the `city_region_unique_ids` / `country_region_unique_ids` arrays. Matches are ~1:1 (only ~0.17% of companies match more than one region); when several match, **prefer the most specific** (`city_region` → `city` → `state` → `country`).
-
-```sql
-WITH company_hq AS (
-  SELECT e.id, e.name,
-         ARRAY_CONCAT(
-           [loc.city_unique_id, loc.state_unique_id, loc.country_unique_id],
-           loc.city_region_unique_ids, loc.country_region_unique_ids) AS hq_loc_ids
-  FROM `omega-dahlia-347111.intelligence_unit.entities_iu` e, UNNEST(e.locations) loc
-  WHERE loc.flg_is_hq
-    AND e.entity_type = 'organization' AND e.organization_subtype = 'company'
-),
-candidates AS (
-  SELECT c.id, c.name, m.main_hq_region, m.location_type
-  FROM company_hq c
-  JOIN `omega-dahlia-347111.intelligence_unit.main_hq_regions` m
-    ON m.dim_locations_iu_unique_id IN UNNEST(c.hq_loc_ids)
-  -- WHERE m.source = 'curated'   -- add for clean-only
-)
-SELECT id, name,
-       ARRAY_AGG(main_hq_region ORDER BY
-         CASE location_type WHEN 'city_region' THEN 1 WHEN 'city' THEN 2
-                            WHEN 'state' THEN 3 ELSE 4 END
-       LIMIT 1)[OFFSET(0)] AS main_hq_region
-FROM candidates
-GROUP BY id, name;
-```
-
-### Ranking regions (e.g. deep-tech ranking)
-
-Once each company carries a `main_hq_region`, rank regions by any filtered company set. Below: **deep-tech companies by region** (deep tech = `technologies` id `6`; swap for science-based `22969`, hard tech `22390`, or any sector/tech tag). Replace `COUNT(*)` with the metric you want to rank on (`SUM(total_vc_funding_usd)`, unicorn count via `flg_is_unicorn`, etc.), and add the usual VC/EV default exclusions when ranking on funding or valuation.
+Group/rank companies by tying each to one region id, then join this table on `dim_locations_iu_unique_id`. A dedicated `entities_iu.main_hq_region_unique_id` column is being added in dbt for exactly this — **declared but not yet built in BigQuery** — so the clean pattern is documented here for when it lands:
 
 ```sql
-WITH company_hq AS (
-  SELECT e.id,
-         ARRAY_CONCAT([loc.city_unique_id, loc.state_unique_id, loc.country_unique_id],
-                      loc.city_region_unique_ids, loc.country_region_unique_ids) AS hq_loc_ids
-  FROM `omega-dahlia-347111.intelligence_unit.entities_iu` e, UNNEST(e.locations) loc
-  WHERE loc.flg_is_hq
-    AND e.entity_type = 'organization' AND e.organization_subtype = 'company'
-    AND EXISTS (SELECT 1 FROM UNNEST(e.technologies) t WHERE t.id = 6)   -- deep tech
-),
-candidates AS (
-  SELECT c.id, m.main_hq_region, m.location_type
-  FROM company_hq c
-  JOIN `omega-dahlia-347111.intelligence_unit.main_hq_regions` m
-    ON m.dim_locations_iu_unique_id IN UNNEST(c.hq_loc_ids)
-  WHERE m.source = 'curated'
-),
-company_region AS (
-  SELECT id, ARRAY_AGG(main_hq_region ORDER BY
-           CASE location_type WHEN 'city_region' THEN 1 WHEN 'city' THEN 2
-                              WHEN 'state' THEN 3 ELSE 4 END
-         LIMIT 1)[OFFSET(0)] AS main_hq_region
-  FROM candidates GROUP BY id
-)
-SELECT main_hq_region, COUNT(*) AS deep_tech_companies,
+-- ⏳ pending: runs once entities_iu.main_hq_region_unique_id is built
+SELECT m.main_hq_region, COUNT(*) AS companies,
        RANK() OVER (ORDER BY COUNT(*) DESC) AS rnk
-FROM company_region GROUP BY main_hq_region ORDER BY rnk;
+FROM `omega-dahlia-347111.intelligence_unit.entities_iu` e
+JOIN `omega-dahlia-347111.intelligence_unit.main_hq_regions` m
+  ON m.dim_locations_iu_unique_id = e.main_hq_region_unique_id
+WHERE e.entity_type='organization' AND e.organization_subtype='company'
+  AND m.source = 'curated'
+  AND EXISTS (SELECT 1 FROM UNNEST(e.technologies) t WHERE t.id = 6)  -- deep tech
+GROUP BY m.main_hq_region ORDER BY rnk;
 ```
 
-Top of the deep-tech result (order is stable; exact counts drift with the data): Bay Area (~4.5k), Greater London (~1.7k), New York Metro (~1.6k), Greater Tel Aviv (~1.4k), Greater Boston (~1.2k).
-
-⚠ Because this table is not in dbt, `update-schema.py` does not manage it and its columns are absent from `schema.json` — rely on this section for column names, and re-check the live table if the curation changes.
+Swap the `technologies` tag (science-based `22969`, hard tech `22390`, …) or the metric (`SUM(total_vc_funding_usd)`, unicorn count via `flg_is_unicorn`) to re-cut the ranking; add the VC/EV default exclusions when ranking on funding or valuation. Validated interim ordering for deep tech: **Bay Area, Greater London, New York Metro, Greater Tel Aviv, Greater Boston.**
 
 ---
 
@@ -544,19 +496,14 @@ All other columns (`unicorn_*`, `tb_*`, investor identity, activity, fund, ranki
 
 ## Complete Column Index
 
-**Derived from `schema.json` (names only) — do not hand-edit.** Maintained by the workbench's column-index generator and synced here; re-sync from the workbench (or re-run its generator) when `schema.json` changes.
+**Generated from `schema.json` by `scripts/update-schema.py` — do not hand-edit.**
 
-Every column and nested field in the warehouse, names only. This exists so you can answer *"does
-this column exist?"* without guessing a name: the per-column Grep on `schema.json` can only confirm
-a name you already typed, so a column you never thought of is invisible unless it is listed here.
-**Scan this list before concluding the warehouse cannot answer something.**
+Every column and nested field, names only, so you can answer *"does this column exist?"* without guessing a name. Types and descriptions are NOT here — once you have the name, grep `schema.json`. Nested STRUCT/ARRAY fields appear as `parent.field` and require `UNNEST`.
 
-Types and descriptions are NOT here — once you have the name, Grep `schema.json` for it.
-Nested STRUCT/ARRAY fields appear in `parent.field` form and require `UNNEST` (see the table sections above).
 
-### `entities_iu` (176)
+### `entities_iu` (177)
 
-`id`, `uuid`, `entity_type`, `organization_subtype`, `name`, `aliases`, `dealroom_url`, `tagline`, `linkedin`, `twitter`, `instagram`, `crunchbase`, `angellist`, `website`, `website_domain`, `image`, `about`, `about_ai_generated`, `summary`, `launch_year`, `launch_month`, `closing_year`, `closing_month`, `verify_bobject_id`, `flg_is_verified`, `flg_is_vcbacked`, `flg_is_funded`, `flg_is_startup`, `alumni_count`, `alumni_founder_count`, `alumni_founded_companies_count`, `alumni_unicorn_companies_count`, `flg_is_investor`, `flg_is_founder`, `flg_is_executive`, `flg_is_partner`, `flg_is_colt`, `flg_is_thoroughbred`, `flg_is_spinout`, `flg_is_titan`, `flg_is_rising_star`, `flg_is_exited`, `year_of_exit`, `flg_is_hiring`, `flg_is_pe_owned`, `year_became_vc_backed`, `year_became_thoroughbred`, `sectors`, `sectors.id`, `sectors.name`, `sdgs`, `sdgs.id`, `sdgs.name`, `ownerships`, `ownerships.id`, `ownerships.name`, `client_focus`, `business_model`, `business_model.id`, `business_model.name`, `income_stream`, `income_stream.id`, `income_stream.name`, `technologies`, `technologies.id`, `technologies.name`, `techstack_categories`, `techstack_categories.id`, `techstack_categories.name`, `industries`, `industries.id`, `industries.name`, `sub_industries`, `sub_industries.id`, `sub_industries.name`, `locations`, `locations.id`, `locations.city`, `locations.state`, `locations.country`, `locations.continent`, `locations.city_id`, `locations.state_id`, `locations.country_id`, `locations.continent_id`, `locations.city_unique_id`, `locations.state_unique_id`, `locations.country_unique_id`, `locations.continent_unique_id`, `locations.city_region`, `locations.country_region`, `locations.city_region_ids`, `locations.country_region_ids`, `locations.city_region_unique_ids`, `locations.country_region_unique_ids`, `locations.lat`, `locations.lon`, `locations.flg_is_hq`, `locations.flg_is_founding`, `latest_valuation_eur`, `latest_valuation_usd`, `valuation_year`, `valuation_month`, `flg_is_valuation_estimate`, `valuations`, `valuations.year`, `valuations.month`, `valuations.value_eur`, `valuations.value_usd`, `valuations.flg_is_estimate`, `revenues`, `revenues.year`, `revenues.value_eur`, `revenues.value_usd`, `revenues.flg_is_estimate`, `latest_revenue_usd`, `latest_revenue_year`, `flg_is_unicorn`, `unicorn_type`, `year_became_unicorn`, `month_became_unicorn`, `date_became_unicorn`, `fundings`, `fundings.id`, `fundings.amount`, `fundings.currency`, `fundings.amount_eur`, `fundings.amount_usd`, `fundings.year`, `fundings.month`, `fundings.week`, `fundings.week_year`, `fundings.round`, `fundings.standardised_round_label`, `fundings.flg_is_verified`, `fundings.flg_is_funding_round`, `fundings.flg_is_vc_round`, `fundings.flg_is_vc_backed_round`, `fundings.flg_is_pe_round`, `fundings.flg_is_exit`, `fundings.valuation_eur`, `fundings.valuation_usd`, `fundings.funding_investors`, `fundings.funding_investors.bobject_investor_id`, `fundings.funding_investors.flg_is_lead_investor`, `fundings.multiples`, `fundings.multiples.ev_revenue_multiple`, `fundings.multiples.ev_ebitda_multiple`, `fundings.multiples.ev_profit_multiple`, `fundings.quarter`, `fundings.timecreate`, `fundings.timeupdate`, `total_funding_usd`, `total_funding_eur`, `total_vc_funding_usd`, `total_vc_funding_eur`, `last_funding_round_id`, `employees`, `growth_stage`, `growth_stage_desc`, `company_status`, `company_status_desc`, `dealroom_signal`, `dealroom_signal.rating`, `dealroom_signal.completeness`, `dealroom_signal.team_strength`, `dealroom_signal.growth_rate`, `dealroom_signal.timing`, `similarweb_traffic`, `similarweb_3_months_growth`, `timecreate`, `patents_count`, `latest_market_cap_eur`, `latest_market_cap_usd`, `market_cap_year`, `market_cap_month`
+`id`, `uuid`, `entity_type`, `organization_subtype`, `main_hq_region_unique_id`, `name`, `aliases`, `dealroom_url`, `tagline`, `linkedin`, `twitter`, `instagram`, `crunchbase`, `angellist`, `website`, `website_domain`, `image`, `about`, `about_ai_generated`, `summary`, `launch_year`, `launch_month`, `closing_year`, `closing_month`, `verify_bobject_id`, `flg_is_verified`, `flg_is_vcbacked`, `flg_is_funded`, `flg_is_startup`, `alumni_count`, `alumni_founder_count`, `alumni_founded_companies_count`, `alumni_unicorn_companies_count`, `flg_is_investor`, `flg_is_founder`, `flg_is_executive`, `flg_is_partner`, `flg_is_colt`, `flg_is_thoroughbred`, `flg_is_spinout`, `flg_is_titan`, `flg_is_rising_star`, `flg_is_exited`, `year_of_exit`, `flg_is_hiring`, `flg_is_pe_owned`, `year_became_vc_backed`, `year_became_thoroughbred`, `sectors`, `sectors.id`, `sectors.name`, `sdgs`, `sdgs.id`, `sdgs.name`, `ownerships`, `ownerships.id`, `ownerships.name`, `client_focus`, `business_model`, `business_model.id`, `business_model.name`, `income_stream`, `income_stream.id`, `income_stream.name`, `technologies`, `technologies.id`, `technologies.name`, `techstack_categories`, `techstack_categories.id`, `techstack_categories.name`, `industries`, `industries.id`, `industries.name`, `sub_industries`, `sub_industries.id`, `sub_industries.name`, `locations`, `locations.id`, `locations.city`, `locations.state`, `locations.country`, `locations.continent`, `locations.city_id`, `locations.state_id`, `locations.country_id`, `locations.continent_id`, `locations.city_unique_id`, `locations.state_unique_id`, `locations.country_unique_id`, `locations.continent_unique_id`, `locations.city_region`, `locations.country_region`, `locations.city_region_ids`, `locations.country_region_ids`, `locations.city_region_unique_ids`, `locations.country_region_unique_ids`, `locations.lat`, `locations.lon`, `locations.flg_is_hq`, `locations.flg_is_founding`, `latest_valuation_eur`, `latest_valuation_usd`, `valuation_year`, `valuation_month`, `flg_is_valuation_estimate`, `valuations`, `valuations.year`, `valuations.month`, `valuations.value_eur`, `valuations.value_usd`, `valuations.flg_is_estimate`, `revenues`, `revenues.year`, `revenues.value_eur`, `revenues.value_usd`, `revenues.flg_is_estimate`, `latest_revenue_usd`, `latest_revenue_year`, `flg_is_unicorn`, `unicorn_type`, `year_became_unicorn`, `month_became_unicorn`, `date_became_unicorn`, `fundings`, `fundings.id`, `fundings.amount`, `fundings.currency`, `fundings.amount_eur`, `fundings.amount_usd`, `fundings.year`, `fundings.month`, `fundings.week`, `fundings.week_year`, `fundings.round`, `fundings.standardised_round_label`, `fundings.flg_is_verified`, `fundings.flg_is_funding_round`, `fundings.flg_is_vc_round`, `fundings.flg_is_vc_backed_round`, `fundings.flg_is_pe_round`, `fundings.flg_is_exit`, `fundings.valuation_eur`, `fundings.valuation_usd`, `fundings.funding_investors`, `fundings.funding_investors.bobject_investor_id`, `fundings.funding_investors.flg_is_lead_investor`, `fundings.multiples`, `fundings.multiples.ev_revenue_multiple`, `fundings.multiples.ev_ebitda_multiple`, `fundings.multiples.ev_profit_multiple`, `fundings.quarter`, `fundings.timecreate`, `fundings.timeupdate`, `total_funding_usd`, `total_funding_eur`, `total_vc_funding_usd`, `total_vc_funding_eur`, `last_funding_round_id`, `employees`, `growth_stage`, `growth_stage_desc`, `company_status`, `company_status_desc`, `dealroom_signal`, `dealroom_signal.rating`, `dealroom_signal.completeness`, `dealroom_signal.team_strength`, `dealroom_signal.growth_rate`, `dealroom_signal.timing`, `similarweb_traffic`, `similarweb_3_months_growth`, `timecreate`, `patents_count`, `latest_market_cap_eur`, `latest_market_cap_usd`, `market_cap_year`, `market_cap_month`
 
 ### `funding_iu` (30)
 
@@ -574,9 +521,9 @@ Nested STRUCT/ARRAY fields appear in `parent.field` form and require `UNNEST` (s
 
 `bobject_investor_id`, `entities_invested_in`, `investor_types`, `deal_structure`, `deal_structure.id`, `deal_structure.name`, `preferred_round`, `total_investments_count`, `min_deal_size`, `max_deal_size`, `industry_experience`, `industry_experience.id`, `industry_experience.name`, `sub_industry_experience`, `sub_industry_experience.id`, `sub_industry_experience.name`, `tags_experience`, `tags_experience.id`, `tags_experience.name`, `total_funding_eur`, `total_funding_usd`, `country_experience`, `investment_stages`, `known_limited_partners`, `lp_investments`, `funds`, `funds.fund_id`, `funds.fund_name`, `funds.amount`, `funds.currency`, `funds.fund_type`, `funds.flg_is_closed`, `funds.fund_date`, `funds.source_url`, `aum_eur`, `aum_usd`
 
-### `people_iu` (29)
+### `people_iu` (34)
 
-`id`, `name`, `image`, `founder_score`, `founded_entities_ids`, `gender`, `gender_desc`, `backgrounds`, `backgrounds.id`, `backgrounds.name`, `universities`, `universities.education_id`, `universities.bobject_university_id`, `universities.degree`, `universities.degree.id`, `universities.degree.name`, `universities.degree.years`, `universities.majors`, `universities.majors.id`, `universities.majors.name`, `universities.year_start`, `universities.year_end`, `founded_companies_total_funding_eur`, `founded_companies_total_funding_usd`, `flg_is_founder`, `flg_is_serial_founder`, `flg_is_promising_founder`, `flg_is_strong_founder`, `flg_is_super_founder`
+`id`, `name`, `image`, `founder_score`, `founded_entities_ids`, `gender`, `gender_desc`, `backgrounds`, `backgrounds.id`, `backgrounds.name`, `universities`, `universities.education_id`, `universities.bobject_university_id`, `universities.degree`, `universities.degree.id`, `universities.degree.name`, `universities.degree.years`, `universities.majors`, `universities.majors.id`, `universities.majors.name`, `universities.year_start`, `universities.year_end`, `origin_country_unique_id`, `origin_emigration_age`, `origin_arrival_year`, `origin_match_method`, `origin_resolution_rule`, `founded_companies_total_funding_eur`, `founded_companies_total_funding_usd`, `flg_is_founder`, `flg_is_serial_founder`, `flg_is_promising_founder`, `flg_is_strong_founder`, `flg_is_super_founder`
 
 ### `people_organizations_iu` (15)
 
@@ -625,5 +572,9 @@ Nested STRUCT/ARRAY fields appear in `parent.field` form and require `UNNEST` (s
 ### `power_law_rising_star_usa` (59)
 
 `investor_name`, `investor_country`, `launch_year`, `age`, `link`, `preferred_round`, `investor_type`, `sub_types`, `bobject_investor_id`, `region`, `region_type`, `sector`, `sector_type`, `unicorn_seed`, `unicorn_early`, `unicorn_late`, `tb_seed`, `tb_early`, `tb_late`, `rising_star_seed`, `rising_star_early`, `unicorn_seed_names`, `unicorn_early_names`, `unicorn_late_names`, `tb_seed_names`, `tb_early_names`, `tb_late_names`, `rising_star_seed_names`, `rising_star_early_names`, `lead_unicorn_seed_names`, `lead_unicorn_early_names`, `lead_unicorn_late_names`, `lead_tb_seed_names`, `lead_tb_early_names`, `lead_tb_late_names`, `lead_rising_star_seed_names`, `lead_rising_star_early_names`, `unicorn_rank`, `decacorn_rank`, `unicorn_seed_score`, `unicorn_early_score`, `unicorn_late_score`, `tb_seed_score`, `tb_early_score`, `tb_late_score`, `rising_star_seed_score`, `rising_star_early_score`, `score_total`, `rounds_since_1990`, `rounds_2024`, `rounds_2025`, `last_fund_amount`, `last_fund_date`, `fund_status`, `funds_names`, `aum`, `activity`, `region_cume_dist`, `percentile`
+
+### `main_hq_regions` (5)
+
+`dim_locations_iu_unique_id`, `location_type`, `main_hq_region`, `company_count`, `source`
 
 <!-- END GENERATED COLUMN INDEX -->

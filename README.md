@@ -72,10 +72,16 @@ python3 scripts/update-schema.py --dbt-repo /path/to/data-dbt-service
 
 The dbt repo resolves from `--dbt-repo`, then `$DBT_REPO`, then common default
 locations. Types need the `bq` CLI authenticated for `omega-dahlia-347111`.
-The script only touches `schema.json` and reports two gaps to fix in dbt:
+Curated tables that aren't in dbt (e.g. `main_hq_regions`) are declared in the
+`NON_DBT` map at the top of the script — their types come from BigQuery and
+descriptions are inline there. The script reports two gaps to fix in dbt:
 **declared in yml but not yet built** (run/deploy dbt) and **built but
-undocumented in yml** (add column docs). It never edits the hand-written
-`references/schema.md` (join paths, enums, gotchas) — update that by hand.
+undocumented in yml** (add column docs).
+
+Besides `schema.json`, the script regenerates **one** block of `schema.md` —
+the `<!-- … GENERATED COLUMN INDEX … -->` section (names-only index of every
+column). The rest of `schema.md` (join paths, enums, gotchas, per-table notes)
+is hand-written — update that by hand.
 Then commit, push, and re-install (`install dealroom-bigquery --force`).
 
 ## License
