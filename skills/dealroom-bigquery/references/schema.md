@@ -403,6 +403,7 @@ WITH company_hq AS (
            loc.city_region_unique_ids, loc.country_region_unique_ids) AS hq_loc_ids
   FROM `omega-dahlia-347111.intelligence_unit.entities_iu` e, UNNEST(e.locations) loc
   WHERE loc.flg_is_hq
+    AND e.entity_type = 'organization' AND e.organization_subtype = 'company'
 ),
 candidates AS (
   SELECT c.id, c.name, m.main_hq_region, m.location_type
@@ -431,6 +432,7 @@ WITH company_hq AS (
                       loc.city_region_unique_ids, loc.country_region_unique_ids) AS hq_loc_ids
   FROM `omega-dahlia-347111.intelligence_unit.entities_iu` e, UNNEST(e.locations) loc
   WHERE loc.flg_is_hq
+    AND e.entity_type = 'organization' AND e.organization_subtype = 'company'
     AND EXISTS (SELECT 1 FROM UNNEST(e.technologies) t WHERE t.id = 6)   -- deep tech
 ),
 candidates AS (
@@ -452,7 +454,7 @@ SELECT main_hq_region, COUNT(*) AS deep_tech_companies,
 FROM company_region GROUP BY main_hq_region ORDER BY rnk;
 ```
 
-Top of the deep-tech result: Bay Area (4,500), Greater London (1,688), New York Metro (1,586), Greater Tel Aviv (1,381), Greater Boston (1,214).
+Top of the deep-tech result (order is stable; exact counts drift with the data): Bay Area (~4.5k), Greater London (~1.7k), New York Metro (~1.6k), Greater Tel Aviv (~1.4k), Greater Boston (~1.2k).
 
 ⚠ Because this table is not in dbt, `update-schema.py` does not manage it and its columns are absent from `schema.json` — rely on this section for column names, and re-check the live table if the curation changes.
 
