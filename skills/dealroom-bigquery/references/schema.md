@@ -393,22 +393,7 @@ Active job openings per entity. Join `entity_id` to `entities_iu.id`. Coverage i
 
 ### How to use it (region rankings, e.g. deep-tech-by-region)
 
-Group/rank companies by tying each to one region id, then join this table on `dim_locations_iu_unique_id`. A dedicated `entities_iu.main_hq_region_unique_id` column is being added in dbt for exactly this — **declared but not yet built in BigQuery** — so the clean pattern is documented here for when it lands:
-
-```sql
--- ⏳ pending: runs once entities_iu.main_hq_region_unique_id is built
-SELECT m.main_hq_region, COUNT(*) AS companies,
-       RANK() OVER (ORDER BY COUNT(*) DESC) AS rnk
-FROM `omega-dahlia-347111.intelligence_unit.entities_iu` e
-JOIN `omega-dahlia-347111.intelligence_unit.main_hq_regions` m
-  ON m.dim_locations_iu_unique_id = e.main_hq_region_unique_id
-WHERE e.entity_type='organization' AND e.organization_subtype='company'
-  AND m.source = 'curated'
-  AND EXISTS (SELECT 1 FROM UNNEST(e.technologies) t WHERE t.id = 6)  -- deep tech
-GROUP BY m.main_hq_region ORDER BY rnk;
-```
-
-Swap the `technologies` tag (science-based `22969`, hard tech `22390`, …) or the metric (`SUM(total_vc_funding_usd)`, unicorn count via `flg_is_unicorn`) to re-cut the ranking; add the VC/EV default exclusions when ranking on funding or valuation. Validated interim ordering for deep tech: **Bay Area, Greater London, New York Metro, Greater Tel Aviv, Greater Boston.**
+Tie each company to one region id, join this table on `dim_locations_iu_unique_id`, filter `source = 'curated'`, then `GROUP BY main_hq_region` and rank. The company→region id is `entities_iu.main_hq_region_unique_id` — **declared in dbt but not yet built in BigQuery**, so wait for it rather than back-computing from the HQ `locations` arrays. To cut the ranking by segment, filter the company set (e.g. deep tech = `technologies` id `6`; science-based `22969`; hard tech `22390`) and pick the metric (`COUNT(*)`, `SUM(total_vc_funding_usd)`, unicorns via `flg_is_unicorn`) — applying the usual VC/EV default exclusions for funding/valuation ranks. Validated deep-tech order: Bay Area, Greater London, New York Metro, Greater Tel Aviv, Greater Boston.
 
 ---
 
