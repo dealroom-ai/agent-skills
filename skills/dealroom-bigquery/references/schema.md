@@ -464,7 +464,7 @@ All other columns (`unicorn_*`, `tb_*`, investor identity, activity, fund, ranki
 
 ## Complete Column Index
 
-**GENERATED from `schema.json` — do not edit by hand.** Regenerate with `npm run gen:column-index`.
+**Derived from `schema.json` (names only) — do not hand-edit.** Maintained by the workbench's column-index generator and synced here; re-sync from the workbench (or re-run its generator) when `schema.json` changes.
 
 Every column and nested field in the warehouse, names only. This exists so you can answer *"does
 this column exist?"* without guessing a name: the per-column Grep on `schema.json` can only confirm
