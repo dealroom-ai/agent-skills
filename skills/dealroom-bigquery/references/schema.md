@@ -414,7 +414,35 @@ Active job openings per entity. Join `entity_id` to `entities_iu.id`. Coverage i
 
 ### How to use it (region rankings, e.g. deep-tech-by-region)
 
-Tie each company to one region id, join this table on `dim_locations_iu_unique_id`, filter `source = 'curated'`, then `GROUP BY main_hq_region` and rank. The company→region id is `entities_iu.main_hq_region_unique_id` — **declared in dbt but not yet built in BigQuery**, so wait for it rather than back-computing from the HQ `locations` arrays. To cut the ranking by segment, filter the company set (e.g. deep tech = `technologies` id `6`; science-based `22969`; hard tech `22390`) and pick the metric (`COUNT(*)`, `SUM(total_vc_funding_usd)`, unicorns via `flg_is_unicorn`) — applying the usual VC/EV default exclusions for funding/valuation ranks. Validated deep-tech order: Bay Area, Greater London, New York Metro, Greater Tel Aviv, Greater Boston.
+The table is region-level. Map each company to its region by matching **any of its HQ location's unique ids** against `dim_locations_iu_unique_id`, then filter `source = 'curated'` and `GROUP BY main_hq_region`. A company's HQ (`entities_iu.locations` where `flg_is_hq`) carries the scalar `city/state/country_unique_id` plus the `city_region_unique_ids` / `country_region_unique_ids` arrays; matches are ~1:1 (~0.17% match >1 region) — on a multi-match prefer the most specific (`city_region` → `city` → `state` → `country`). Filter the company set (e.g. deep tech = `technologies` id `6`; science-based `22969`; hard tech `22390`) and pick the metric (`COUNT(*)`, `SUM(total_vc_funding_usd)`, unicorns via `flg_is_unicorn`) to re-cut, applying the usual VC/EV default exclusions for funding/valuation ranks.
+
+```sql
+WITH company_hq AS (
+  SELECT e.id,
+         ARRAY_CONCAT([loc.city_unique_id, loc.state_unique_id, loc.country_unique_id],
+                      loc.city_region_unique_ids, loc.country_region_unique_ids) AS hq_loc_ids
+  FROM `omega-dahlia-347111.intelligence_unit.entities_iu` e, UNNEST(e.locations) loc
+  WHERE loc.flg_is_hq AND e.entity_type='organization' AND e.organization_subtype='company'
+    AND EXISTS (SELECT 1 FROM UNNEST(e.technologies) t WHERE t.id = 6)   -- deep tech; swap/remove to re-cut
+),
+cand AS (
+  SELECT c.id, m.main_hq_region, m.location_type
+  FROM company_hq c
+  JOIN `omega-dahlia-347111.intelligence_unit.main_hq_regions` m
+    ON m.dim_locations_iu_unique_id IN UNNEST(c.hq_loc_ids)
+  WHERE m.source = 'curated'
+),
+company_region AS (
+  SELECT id, ARRAY_AGG(main_hq_region ORDER BY
+           CASE location_type WHEN 'city_region' THEN 1 WHEN 'city' THEN 2 WHEN 'state' THEN 3 ELSE 4 END
+         LIMIT 1)[OFFSET(0)] AS main_hq_region
+  FROM cand GROUP BY id
+)
+SELECT main_hq_region, COUNT(*) AS companies, RANK() OVER (ORDER BY COUNT(*) DESC) AS rnk
+FROM company_region GROUP BY main_hq_region ORDER BY rnk;
+```
+
+Validated deep-tech order: Bay Area, Greater London, New York Metro, Greater Tel Aviv, Greater Boston. **Future simplification:** an `entities_iu.main_hq_region_unique_id` column is declared in dbt but **not yet built** — once it lands this collapses to a single-column join (`m.dim_locations_iu_unique_id = e.main_hq_region_unique_id`), no `company_hq`/`cand` CTEs needed.
 
 ---
 
