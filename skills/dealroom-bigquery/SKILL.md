@@ -4,7 +4,7 @@ description: >-
   Write CORRECT SQL against Dealroom's BigQuery warehouse (`intelligence_unit`) and run it with
   the `run_bigquery` tool. This is the WAREHOUSE half of the correctness layer; `api-intelligence-unit`
   is the REST API half. Read this BEFORE writing any SQL: it carries the authoritative column list
-  (`schema.json`, 18 tables — Grep it, never Read it whole), the entity model and join paths (`schema.md`), the default VC-funding
+  (`schema.json`, 20 tables — Grep it, never Read it whole), the entity model and join paths (`schema.md`), the default VC-funding
   and enterprise-value exclusions the platform applies, the deduplication patterns, and the recurring
   mistakes that silently return a plausible wrong number. Trigger whenever a question is going to be
   answered from the warehouse rather than the REST API — anything reaching for people, founders,
@@ -38,7 +38,7 @@ user as a table; you get back the schema, the row count and a few sample rows. D
 
 **First step — load the schema references, CHEAPLY.**
 
-Read `schema.md` (549 lines, one Read). Then **Grep `schema.json`; do NOT Read it.** It is 3,536 lines
+Read `schema.md` (a few hundred lines, one Read). Then **Grep `schema.json`; do NOT Read it.** It is several thousand lines
 and the Read tool returns at most 2,000 per call, so reading it whole costs two calls and ~30k tokens
 of context before you have written a single line of SQL — on a latency-sensitive turn that is the
 difference between an answer in seconds and an answer in minutes.
@@ -51,9 +51,9 @@ what Grep is for:
 
 Read a slice of `schema.json` with offset/limit only when you need a whole table's block at once.
 
-**Discovery vs verification — do not confuse the two greps.** `"column_name": "x"` only CONFIRMS a name you already typed; it can never surface a column you didn't think of. For discovery use **`schema.md` → "Complete Column Index"** (the tail of the file you just read): every column on all 18 tables, names only. **Scan it before telling the user the warehouse cannot answer something** — that failure mode has already happened once, on `entities_iu.flg_is_exited` / `year_of_exit`, which were in `schema.json` the whole time.
+**Discovery vs verification — do not confuse the two greps.** `"column_name": "x"` only CONFIRMS a name you already typed; it can never surface a column you didn't think of. For discovery use **`schema.md` → "Complete Column Index"** (the tail of the file you just read): every column on all 20 tables, names only. **Scan it before telling the user the warehouse cannot answer something** — that failure mode has already happened once, on `entities_iu.flg_is_exited` / `year_of_exit`, which were in `schema.json` the whole time.
 
-- **`schema.json`** — authoritative column list for all 18 tables (every column + nested STRUCT field, with data types and descriptions). All tables now live in the single **`intelligence_unit`** dataset, qualified as `` `omega-dahlia-347111.intelligence_unit.<table>` ``. Core tables carry an `_iu` suffix: `entities_iu`, `funding_iu`, `vc_funding_iu`, `vc_combined_rounds_iu`, `investors_iu`, `people_iu`, `people_organizations_iu`, `jobs_iu`, `news_iu`, `dim_lists_iu`, `timeseries_data_iu`, `headcount_breakdown_iu`, `web_traffic_iu`, `dim_locations_iu`, `dim_tags_iu`, `dim_currency_rates_iu`. The two power-law tables are listed in `schema.json` for column reference but live in a **separate `reporting_iu` dataset** — qualify them as `` `omega-dahlia-347111.reporting_iu.power_law` `` / `` `omega-dahlia-347111.reporting_iu.power_law_rising_star_usa` `` (no `_iu` suffix on the table name itself). (⚠ `vc_funding_investors` was previously documented but is **not deployed** in production — use the `funding_investors` array on `funding_iu`/`vc_funding_iu` instead; see `schema.md`.) `headcount_breakdown_iu` and `web_traffic_iu` are **new** tables in this schema generation. Every column name used in a query must appear in this file — never guess. If a column name in your draft query isn't in `schema.json`, stop and verify before continuing.
+- **`schema.json`** — authoritative column list for all 20 tables (every column + nested STRUCT field, with data types and descriptions). All tables now live in the single **`intelligence_unit`** dataset, qualified as `` `omega-dahlia-347111.intelligence_unit.<table>` ``. Core tables carry an `_iu` suffix: `entities_iu`, `funding_iu`, `vc_funding_iu`, `vc_combined_rounds_iu`, `investors_iu`, `vc_investor_returns_iu`, `people_iu`, `people_organizations_iu`, `jobs_iu`, `news_iu`, `dim_lists_iu`, `timeseries_data_iu`, `headcount_breakdown_iu`, `web_traffic_iu`, `dim_locations_iu`, `dim_tags_iu`, `dim_currency_rates_iu`. The two power-law tables are listed in `schema.json` for column reference but live in a **separate `reporting_iu` dataset** — qualify them as `` `omega-dahlia-347111.reporting_iu.power_law` `` / `` `omega-dahlia-347111.reporting_iu.power_law_rising_star_usa` `` (no `_iu` suffix on the table name itself). (⚠ `vc_funding_investors` was previously documented but is **not deployed** in production — use the `funding_investors` array on `funding_iu`/`vc_funding_iu` instead; see `schema.md`.) `headcount_breakdown_iu` and `web_traffic_iu` are **new** tables in this schema generation. Also included is the curated **`main_hq_regions`** table (not a dbt model; canonical HQ-region dimension — see `schema.md`). Every column name used in a query must appear in this file — never guess. If a column name in your draft query isn't in `schema.json`, stop and verify before continuing.
 - **`schema.md`** — narrative context: the entity model, join paths, enum values, INT↔label mappings, geography/region logic, critical field corrections, and query gotchas. Its tail carries the **Complete Column Index** — every column name on every table, generated from `schema.json`; that is your discovery surface.
 
 Do not rely on memory alone — but verify by Grep, not by bulk reading. "Every column must appear in
@@ -119,7 +119,7 @@ AND NOT EXISTS (
 AND (e.growth_stage IS NULL OR e.growth_stage != 4)
 ```
 
-**The round-level selection is `flg_is_vc_round = TRUE`, and it is COMPLETE.** The flag already excludes grants, SPAC private placements and debt by definition (owner, 2026-08-25) — it does **not** exclude `CONVERTIBLE` rounds (convertible notes are VC financing; ~10.6k are flagged VC). Do **NOT** add `round NOT IN ('SPAC PRIVATE PLACEMENT', 'GRANT')` — or any other round-name exclusion — on top of it: it is redundant with the flag, and a hand-listed set of round names silently misses variants the flag already handles. On `funding_iu`, state `flg_is_vc_round = TRUE` explicitly; `vc_funding_iu` carries the same column, where stating it is harmless.
+**`flg_is_vc_round = TRUE` is the VC-round selection.** It already excludes grants, SPAC private placements and debt by definition (owner, 2026-08-25), so `round NOT IN ('SPAC PRIVATE PLACEMENT', 'GRANT')` on top of it is **redundant — do not add it** (a hand-listed set of round names also silently misses variants the flag already handles). The one exception: the flag does **not** exclude `CONVERTIBLE` rounds (convertible notes are VC financing; ~10.6k are flagged VC), so add `AND round != 'CONVERTIBLE'` only if an analysis specifically needs to drop them. On `funding_iu`, state `flg_is_vc_round = TRUE` explicitly; `vc_funding_iu` carries the same column, where stating it is harmless.
 
 These match the Dealroom platform defaults for VC funding views. `vc_funding_iu` already pre-filters outside tech and mature at the table level, so those two are belt-and-braces when using `vc_funding_iu` but still worth including for clarity.
 
@@ -435,6 +435,8 @@ Pick deliberately and don't mix the array and the time-series in one metric.
 | Investor portfolios | `investors_iu` + `funding_iu` | UNNEST `funding_investors` to link; `entities_invested_in` for portfolio |
 | Investor participation per round | `funding_iu` or `vc_funding_iu` + `UNNEST(funding_investors)` | One array element per investor (`bobject_investor_id`, `flg_is_lead_investor`); join → entities.id. (⚠ the `vc_funding_investors` table with per-investor `bucket_usd` is NOT deployed) |
 | Investor ranking / power-law / top investors | `reporting_iu.power_law` (US: `power_law_rising_star_usa`) | Filter region+region_type AND sector+sector_type together; rank by `score_total`/`percentile`. Separate `reporting_iu` dataset (these two tables keep plain names, no `_iu`). Score columns are `FLOAT64`. |
+| Investor returns / profit / MOIC / TVPI | `vc_investor_returns_iu` | One row per investor×company — aggregate it directly, do NOT derive from rounds (double-counts). Realized value is mostly estimated: filter `exit_value_source='disclosed_exit_amount'` for booked returns |
+| Companies by main HQ region / region rankings | `main_hq_regions` | Join via `entities_iu.main_hq_region_unique_id` (declared, pending build) → `dim_locations_iu_unique_id`; filter `source='curated'` |
 | Founder/exec/partner backgrounds | `people_iu` + `people_organizations_iu` | Use `flg_is_founder`/`flg_is_executive`/`flg_is_partner`, not LIKE on titles |
 | Company counts/lists | `entities_iu` | Filter `entity_type`/`organization_subtype`; no default exclusions unless VC/EV |
 | Exit data | `funding_iu` only | `vc_funding_iu` does NOT contain exits; or use entity `flg_is_exited`/`year_of_exit` |
