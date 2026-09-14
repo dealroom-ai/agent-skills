@@ -1,23 +1,63 @@
 ---
 name: dealroom-bigquery
-description: Write SQL queries against Dealroom's BigQuery dataset (intelligence_unit, formerly dealroom_intelligence), write structured prompts for the BigQuery agent, and review/correct agent-generated SQL. Trigger when the user mentions BigQuery, BQ, SQL queries against Dealroom data, the BigQuery agent, intelligence_unit, dealroom_intelligence, or wants to pull startup/VC/funding/investor/people/jobs data from the database. Also trigger for phrases like 'write a query for', 'fix this SQL', 'prompt the agent', 'how many unicorns', 'VC funding by year', 'investor activity', 'job openings', 'investor ranking', 'power law', 'top investors', or any question that implies querying Dealroom's structured data. If they paste SQL to review, paste agent output for a second opinion, or want help prompting the BQ agent, use this skill. Do NOT trigger for spreadsheet enrichment tasks (use dealroom-excel-enrichment) or general data visualisation requests that don't involve writing SQL.
+description: >-
+  Write CORRECT SQL against Dealroom's BigQuery warehouse (`intelligence_unit`) and run it with
+  the `run_bigquery` tool. This is the WAREHOUSE half of the correctness layer; `api-intelligence-unit`
+  is the REST API half. Read this BEFORE writing any SQL: it carries the authoritative column list
+  (`schema.json`, 18 tables — Grep it, never Read it whole), the entity model and join paths (`schema.md`), the default VC-funding
+  and enterprise-value exclusions the platform applies, the deduplication patterns, and the recurring
+  mistakes that silently return a plausible wrong number. Trigger whenever a question is going to be
+  answered from the warehouse rather than the REST API — anything reaching for people, founders,
+  jobs, news, web traffic, headcount breakdowns, LP relationships, investor power-law rankings, or a
+  join/grain the API cannot express. Also trigger before running ANY `run_bigquery` call, including a
+  schema-discovery one, and when a warehouse query returned something that looks wrong. Prefer the
+  REST API tools when they can answer the question: they are faster, cheaper and already carry these
+  invariants in code.
 ---
 
-# Dealroom BigQuery — SQL, Agent Prompting & Benchmarking
+# Dealroom BigQuery — writing SQL that returns the right number
 
-This skill has three jobs:
+This skill has two jobs in the workbench:
 
-1. **Write SQL queries** directly against the `intelligence_unit` dataset in BigQuery.
-2. **Write structured natural-language prompts** for the Dealroom BigQuery AI Agent so it produces correct SQL on the first try.
-3. **Review and correct SQL** the agent has produced — targeting the recurring error patterns from testing.
+1. **Write SQL** against the `intelligence_unit` dataset and run it with `run_bigquery`.
+2. **Review your own SQL** before and after running it, against the recurring error patterns below.
 
-**First step — always load the schema references:**
-Before writing or reviewing any query, read both files in this skill's directory:
+**When to be here at all.** The REST API tools (`run_api_query`, `rank_entities`, `aggregate_rounds`
+and the rest) are the default: they are faster, cheaper, and the platform's default filters are
+enforced in code rather than by you remembering them. Reach for the warehouse only when the API
+genuinely cannot answer — people and founders, jobs, news, web traffic, headcount breakdowns, LP
+relationships, investor power-law rankings, or a join/grain the API has no endpoint for. If you
+find yourself writing SQL that reproduces something `rank_companies_by_funding` already does, stop
+and use the tool.
 
-- **`schema.json`** — authoritative column list for all 17 tables (every column + nested STRUCT field, with data types and descriptions). All tables now live in the single **`intelligence_unit`** dataset, qualified as `` `omega-dahlia-347111.intelligence_unit.<table>` ``. Core tables carry an `_iu` suffix: `entities_iu`, `funding_iu`, `vc_funding_iu`, `investors_iu`, `people_iu`, `people_organizations_iu`, `jobs_iu`, `news_iu`, `dim_lists_iu`, `timeseries_data_iu`, `headcount_breakdown_iu`, `web_traffic_iu`, `dim_locations_iu`, `dim_tags_iu`, `dim_currency_rates_iu`. The two power-law tables are listed in `schema.json` for column reference but live in a **separate `reporting_iu` dataset** — qualify them as `` `omega-dahlia-347111.reporting_iu.power_law` `` / `` `omega-dahlia-347111.reporting_iu.power_law_rising_star_usa` `` (no `_iu` suffix on the table name itself). (⚠ `vc_funding_investors` was previously documented but is **not deployed** in production — use the `funding_investors` array on `funding_iu`/`vc_funding_iu` instead; see `schema.md`.) `headcount_breakdown_iu` and `web_traffic_iu` are **new** tables in this schema generation. Every column name used in a query must appear in this file — never guess. If a column name in your draft query isn't in `schema.json`, stop and verify before continuing.
-- **`schema.md`** — narrative context: the entity model, join paths, enum values, INT↔label mappings, geography/region logic, critical field corrections, and query gotchas.
+**Cost and shape of a `run_bigquery` call.** Every query is dry-run first and rejected if it would
+scan past the byte ceiling, so narrow column lists and a real `WHERE` clause are not style advice —
+an unfiltered `SELECT *` will simply fail. The full result is cached server-side and shown to the
+user as a table; you get back the schema, the row count and a few sample rows. Do not ask for large
+`maxSampleRows`; you are shape-checking column names and types, not reading the data.
 
-Do not rely on memory alone.
+**First step — load the schema references, CHEAPLY.**
+
+Read `schema.md` (549 lines, one Read). Then **Grep `schema.json`; do NOT Read it.** It is 3,536 lines
+and the Read tool returns at most 2,000 per call, so reading it whole costs two calls and ~30k tokens
+of context before you have written a single line of SQL — on a latency-sensitive turn that is the
+difference between an answer in seconds and an answer in minutes.
+
+It is a flat array of `{table_name, column_name, description, data_type}` records, which is exactly
+what Grep is for:
+
+- every column on a table: \`Grep("\\"table_name\\": \\"vc_funding_iu\\"", ".claude/skills/dealroom-bigquery/schema.json")\`
+- verify one column exists: \`Grep("\\"column_name\\": \\"amount_usd\\"", ".claude/skills/dealroom-bigquery/schema.json")\`
+
+Read a slice of `schema.json` with offset/limit only when you need a whole table's block at once.
+
+**Discovery vs verification — do not confuse the two greps.** `"column_name": "x"` only CONFIRMS a name you already typed; it can never surface a column you didn't think of. For discovery use **`schema.md` → "Complete Column Index"** (the tail of the file you just read): every column on all 18 tables, names only. **Scan it before telling the user the warehouse cannot answer something** — that failure mode has already happened once, on `entities_iu.flg_is_exited` / `year_of_exit`, which were in `schema.json` the whole time.
+
+- **`schema.json`** — authoritative column list for all 18 tables (every column + nested STRUCT field, with data types and descriptions). All tables now live in the single **`intelligence_unit`** dataset, qualified as `` `omega-dahlia-347111.intelligence_unit.<table>` ``. Core tables carry an `_iu` suffix: `entities_iu`, `funding_iu`, `vc_funding_iu`, `vc_combined_rounds_iu`, `investors_iu`, `people_iu`, `people_organizations_iu`, `jobs_iu`, `news_iu`, `dim_lists_iu`, `timeseries_data_iu`, `headcount_breakdown_iu`, `web_traffic_iu`, `dim_locations_iu`, `dim_tags_iu`, `dim_currency_rates_iu`. The two power-law tables are listed in `schema.json` for column reference but live in a **separate `reporting_iu` dataset** — qualify them as `` `omega-dahlia-347111.reporting_iu.power_law` `` / `` `omega-dahlia-347111.reporting_iu.power_law_rising_star_usa` `` (no `_iu` suffix on the table name itself). (⚠ `vc_funding_investors` was previously documented but is **not deployed** in production — use the `funding_investors` array on `funding_iu`/`vc_funding_iu` instead; see `schema.md`.) `headcount_breakdown_iu` and `web_traffic_iu` are **new** tables in this schema generation. Every column name used in a query must appear in this file — never guess. If a column name in your draft query isn't in `schema.json`, stop and verify before continuing.
+- **`schema.md`** — narrative context: the entity model, join paths, enum values, INT↔label mappings, geography/region logic, critical field corrections, and query gotchas. Its tail carries the **Complete Column Index** — every column name on every table, generated from `schema.json`; that is your discovery surface.
+
+Do not rely on memory alone — but verify by Grep, not by bulk reading. "Every column must appear in
+schema.json" is a rule about checking each column you use, not an instruction to load the file.
 
 > **⚠ Migration note.** The dataset moved to a canonical entity model. Entities are classified by **`entity_type`**
 > (`'person'`/`'organization'`) + **`organization_subtype`** (`'company'`/`'university'`/`'gov_ngo'`/`'fund'`) +
@@ -27,15 +67,19 @@ Do not rely on memory alone.
 
 ---
 
-## Who This Skill Serves
+## How this reads in the workbench
 
-The team has a mix of SQL experience levels. Adapt accordingly:
-- **SQL-literate users:** Show the query, briefly note which patterns you applied and why, highlight anything non-obvious.
-- **Non-SQL users:** Write the query, explain in plain language what it does, what filters are applied, and what the output columns mean.
+The user is not reading your SQL — they are reading a table, a chart and your closing answer. So:
 
-Always show the full SQL in every response — never summarise or skip it.
-
-**Pair every substantive query with a companion sanity-check query (see PART 4).** Present it immediately after the main query so the user can run both in BigQuery in parallel; when they return the two CSVs (main + check), reconcile them before the number goes into a graph.
+- **Do not paste the SQL into the chat answer.** It is already on the tool call, and the workbench
+  shows the result. Say in one line what population you counted and which filters you applied
+  (for example "VC rounds, outside-tech and mature-stage excluded, 2015 onwards"), because that
+  sentence is what makes the number checkable.
+- **State the definition you chose whenever more than one was available** — which "Europe", HQ vs
+  founding location, valuation source. A number without its definition is not an answer.
+- **Run the companion sanity check yourself** (PART 4) rather than handing it to the user. You have
+  `run_bigquery`; a second cheap aggregate query is a few seconds. If a check fails, say so and
+  either fix the query or caveat the number. Do not quietly present a figure a check contradicted.
 
 ---
 
@@ -58,7 +102,7 @@ If the user's question is clear enough, proceed directly — don't over-intervie
 
 **Defaults apply to two query categories: VC funding and enterprise value (EV).** For all other query types, apply no defaults unless the user explicitly asks.
 
-### VC funding queries — always apply these three exclusions
+### VC funding queries — always apply these two exclusions
 
 Any query that pulls VC funding data (using `vc_funding_iu`, or `funding_iu` with `flg_is_vc_round = TRUE`):
 
@@ -75,14 +119,13 @@ AND NOT EXISTS (
 AND (e.growth_stage IS NULL OR e.growth_stage != 4)
 ```
 
-**3. Exclude SPAC private placement and grant rounds:**
-```sql
-AND f.round NOT IN ('SPAC PRIVATE PLACEMENT', 'GRANT')
-```
+**The round-level selection is `flg_is_vc_round = TRUE`, and it is COMPLETE.** The flag already excludes grants, SPAC private placements and debt by definition (owner, 2026-08-25) — it does **not** exclude `CONVERTIBLE` rounds (convertible notes are VC financing; ~10.6k are flagged VC). Do **NOT** add `round NOT IN ('SPAC PRIVATE PLACEMENT', 'GRANT')` — or any other round-name exclusion — on top of it: it is redundant with the flag, and a hand-listed set of round names silently misses variants the flag already handles. On `funding_iu`, state `flg_is_vc_round = TRUE` explicitly; `vc_funding_iu` carries the same column, where stating it is harmless.
 
-These match the Dealroom platform defaults for VC funding views. `vc_funding_iu` already pre-filters outside tech and mature at the table level, so those two are belt-and-braces when using `vc_funding_iu` but still worth including for clarity. The SPAC PP and grant round exclusion must be applied explicitly even when using `vc_funding_iu`.
+These match the Dealroom platform defaults for VC funding views. `vc_funding_iu` already pre-filters outside tech and mature at the table level, so those two are belt-and-braces when using `vc_funding_iu` but still worth including for clarity.
 
-### Enterprise value (EV) queries — always apply these four exclusions
+**Exception — `vc_combined_rounds_iu` needs none of them.** Round-size (median/quartile) queries run off `vc_combined_rounds_iu`, which has its whole population baked in at build time: verified VC rounds only (exits excluded), startups founded ≥ 1990, Mature excluded, `amount_usd >= $1M` floor. **Do not re-apply these exclusions** — you'd be filtering an already-filtered table. See Common Query Templates → "Median / quartile VC round size by stage".
+
+### Enterprise value (EV) queries — always apply these three exclusions
 
 **Scope — what counts as an EV query:** any query that filters, sorts, or aggregates on a valuation field (`latest_valuation_usd`, `latest_valuation_eur`, the `valuations` array, `timeseries_data.valuation_usd`), or uses `flg_is_unicorn` (unicorn status is itself a valuation threshold). Exit valuations live separately on `funding.valuation_usd` with `flg_is_exit = TRUE` and do not take these defaults.
 
@@ -130,27 +173,21 @@ AND e.launch_year >= 1990
 ```
 Deliberately strict — companies with a missing `launch_year` are dropped. This is a departure from the skill's general NULL-handling rule; the intent is to guarantee a clean post-1990 cohort for EV analysis.
 
-**4. Exclude 'mature company' sector tag:**
-```sql
-AND NOT EXISTS (
-  SELECT 1 FROM UNNEST(e.sectors) s
-  WHERE LOWER(s.name) = 'mature company'
-)
-```
+**Do NOT exclude the 'mature company' sector tag.** It used to be a fourth default here and was removed (owner, 2026-08-25): the platform's EV view never applied it, so it made workbench numbers diverge from the app for no reason. The tag still exists in the taxonomy — apply it only when the user explicitly asks for it, and say so when you do.
 
-The mature-stage (filter 2) and mature-company-tag (filter 4) exclusions overlap but are not identical — keep both.
-
-> **⚠ These four defaults are NOT the platform's EV view chip-set.** When a user is replicating a specific Dealroom app view (they'll often show the filter chips), match *their* chips, not these defaults. A typical platform EV view uses: `outside tech`, `mature` (growth stage), **`closed`** (`company_status != 3`), **government nonprofit** (already excluded by `organization_subtype = 'company'`), **service provider** (see below), `founded since 1990`, and `VC Backed` (`flg_is_vcbacked = TRUE`) — and does **not** apply the `mature company` *sector tag* (filter 4). So to mirror a platform view you usually **drop filter 4 and add `company_status != 3`**. Keep the four defaults only for a generic "EV analysis" ask with no platform view to match.
+> **⚠ These three defaults are NOT the platform's full EV view chip-set.** When a user is replicating a specific Dealroom app view (they'll often show the filter chips), match *their* chips, not these defaults. A typical platform EV view uses: `outside tech`, `mature` (growth stage), **`closed`** (`company_status != 3`), **government nonprofit** (already excluded by `organization_subtype = 'company'`), **service provider** (see below), `founded since 1990`, and `VC Backed` (`flg_is_vcbacked = TRUE`). So to mirror a platform view you usually just **add `company_status != 3`** (and `flg_is_vcbacked = TRUE` when the view carries the VC Backed chip). Keep the three defaults for a generic "EV analysis" ask with no platform view to match.
 >
 > **`service provider` has no field in this schema.** The platform's `company_type = service provider` exclusion maps to the retired `type` column; `organization_subtype` only has `company / university / gov_ngo / investor`, and the literal `service provider` *sector tag* covers just ~154 entities (not the same population). Leave it unexcluded and note the residual (~0.2%, and effectively nil once `flg_is_vcbacked = TRUE` is required, since service providers are rarely VC-backed).
 
 ### Mixed queries (both VC funding and EV)
 
-For queries that touch both (e.g. "unicorns by VC raised"), take the **union of exclusions** — apply all six unique filters. The VC and EV exclusions overlap on outside tech and mature stage; the EV-only additions (`launch_year >= 1990`, `mature company` tag) just narrow further.
+For queries that touch both (e.g. "unicorns by VC raised"), take the **union of exclusions** — outside tech, mature stage, `launch_year >= 1990`, plus `flg_is_vc_round = TRUE` on the funding rows. The VC and EV exclusions overlap on outside tech and mature stage; the EV-only addition (`launch_year >= 1990`) just narrows further.
 
 ### Other query types — no default filters
 
-Do not apply `flg_is_startup = TRUE`, `flg_is_verified = TRUE`, or the mature/outside tech exclusions on queries that aren't VC or EV. Let the user specify what they want filtered.
+Do not apply `flg_is_startup = TRUE` or the mature/outside tech exclusions on queries that aren't VC or EV. Let the user specify what they want filtered.
+
+**`flg_is_verified` is a ROUNDS concept — never a company filter.** `entities_iu.flg_is_verified` exists in the schema but must not be used to filter companies, on any query type. Verified-ness belongs to funding rounds (`funding_iu` / `vc_funding_iu` / the `fundings[]` array), and even there apply it only when the user explicitly asks for verified rounds.
 
 ### Conditional — exclude closed companies
 
@@ -291,6 +328,60 @@ APPROX_QUANTILES(f.valuation_usd, 2)[OFFSET(1)] AS median_valuation_usd
 ```
 Entity-level shortcuts now exist: `e.flg_is_exited` (has ≥1 exit) and `e.year_of_exit` — use for "exited companies" filters without joining `funding_iu`.
 
+**⚠ Acquisition DIRECTION — "of" vs "by" flips the join. Read the phrasing before writing SQL.**
+An `flg_is_exit = TRUE AND round = 'ACQUISITION'` row on `funding_iu` links two sides:
+- **`funding_iu.entity_id` = the TARGET** — the company that got acquired.
+- **`funding_iu.funding_investors[].bobject_investor_id` = the ACQUIRER(s)** — the buyer. Verified empirically: on ACQUISITION rows these parties are the acquiring companies (`flg_is_investor = TRUE`; e.g. American Express→TheFork, Rocket Software→Vertica, Otovo→Green Panel), **not** the target's old VCs. `bobject_investor_id` joins to `entities_iu.id`.
+
+Map the analyst's wording to the side:
+- **"acquisitions/exits OF company X"** → X is the TARGET → join `f.entity_id = c.id`.
+- **"acquisitions BY company X" / "M&A X made" / "X acquiring companies globally"** → X is the ACQUIRER → `UNNEST(f.funding_investors) inv` then join `c.id = inv.bobject_investor_id`; leave the TARGET's geography UNFILTERED (that is the "globally" part); count distinct deals with `COUNT(DISTINCT f.id)`.
+
+Either direction is an **exits query — NOT a VC-funding or EV query**, so the default exclusion packs do **not** auto-apply. Scope the company cohort deliberately (both templates below share it): `entity_type='organization'` + `organization_subtype='company'` + `flg_is_vcbacked = TRUE`; exclude `'outside tech'` (VC-backed = the tech universe); **do NOT apply the mature growth-stage exclusion** (`growth_stage != 4` wrongly drops mature companies that exited/acquired); Europe via **HQ or founding** with `EXISTS`.
+```sql
+-- OF-SIDE: global acquisitions OF European VC-backed companies (they GOT acquired), by year
+WITH euro_vc_companies AS (
+  SELECT e.id
+  FROM `omega-dahlia-347111.intelligence_unit.entities_iu` e
+  WHERE e.entity_type = 'organization' AND e.organization_subtype = 'company'
+    AND e.flg_is_vcbacked = TRUE
+    AND NOT EXISTS (SELECT 1 FROM UNNEST(e.sectors) s WHERE LOWER(s.name) = 'outside tech')
+    AND EXISTS (SELECT 1 FROM UNNEST(e.locations) loc
+                WHERE (loc.flg_is_hq = TRUE OR loc.flg_is_founding = TRUE)
+                  AND 'Europe' IN UNNEST(loc.country_region))   -- incl. Türkiye, excl. Israel
+  GROUP BY e.id
+)
+SELECT f.year,
+  COUNT(*)                    AS acquisitions,        -- acquisition EVENTS
+  COUNT(DISTINCT f.entity_id) AS companies_acquired
+FROM `omega-dahlia-347111.intelligence_unit.funding_iu` f
+JOIN euro_vc_companies c ON f.entity_id = c.id        -- the European company IS the TARGET
+WHERE f.flg_is_exit = TRUE AND f.round = 'ACQUISITION' AND f.year >= 2010
+GROUP BY f.year ORDER BY f.year;
+```
+```sql
+-- BY-SIDE: global acquisitions MADE BY European VC-backed companies (they are the BUYER), by year
+WITH euro_vc_acquirers AS (   -- same cohort filters as OF-SIDE
+  SELECT e.id
+  FROM `omega-dahlia-347111.intelligence_unit.entities_iu` e
+  WHERE e.entity_type = 'organization' AND e.organization_subtype = 'company'
+    AND e.flg_is_vcbacked = TRUE
+    AND NOT EXISTS (SELECT 1 FROM UNNEST(e.sectors) s WHERE LOWER(s.name) = 'outside tech')
+    AND EXISTS (SELECT 1 FROM UNNEST(e.locations) loc
+                WHERE (loc.flg_is_hq = TRUE OR loc.flg_is_founding = TRUE)
+                  AND 'Europe' IN UNNEST(loc.country_region))
+  GROUP BY e.id
+)
+SELECT f.year,
+  COUNT(DISTINCT f.id) AS acquisitions_made,   -- distinct DEALS with a European VC-backed buyer
+  COUNT(DISTINCT a.id) AS distinct_acquirers
+FROM `omega-dahlia-347111.intelligence_unit.funding_iu` f
+JOIN UNNEST(f.funding_investors) inv ON TRUE
+JOIN euro_vc_acquirers a ON a.id = inv.bobject_investor_id   -- the European company IS the BUYER
+WHERE f.flg_is_exit = TRUE AND f.round = 'ACQUISITION' AND f.year >= 2010  -- target geography unfiltered = "globally"
+GROUP BY f.year ORDER BY f.year;
+```
+
 **NULL handling in exclusions:**
 When excluding a value, BigQuery's three-valued logic means `!= 'X'` (or `!= N`) also excludes NULLs. Always use:
 ```sql
@@ -317,13 +408,28 @@ OR EXISTS (
 **Currency conversion:**
 `dim_currency_rates.eur_rate` = units of local currency per 1 EUR. To convert: `amount_local / eur_rate`. Entity-level EUR fields also available: `latest_valuation_eur`, valuations sub-array `value_eur`.
 
+**Revenue — three ways to read it, and a flat-FX caveat:**
+
+Pick deliberately and don't mix the array and the time-series in one metric.
+- **Scalar shortcut — `entities_iu.latest_revenue_usd` (FLOAT64) + `latest_revenue_year` (INT64).** The most recent year's revenue without unnesting — fastest for a "current revenue" filter/sort or a single-company headline figure. ⚠ It can **lag the max year in `revenues[]`** (which may carry a forward estimate — e.g. a company with a 2027 estimate row can still have `latest_revenue_year = 2026`); if you need a specific year, read the array.
+- **`entities_iu.revenues[]`** — `ARRAY<STRUCT<year, value_eur, value_usd, flg_is_estimate>>`: full **fiscal-year** history, one row per year. Use for revenue history or a specific past year.
+- **`timeseries_data_iu.revenue_usd`** — **forward-filled** yearly revenue (last disclosed value carried forward), aligned with the other time-series metrics. Use for revenue-over-time charts and cross-metric time-series work.
+- **⚠ `value_usd` is NOT a real FX conversion — it's a flat `value_eur × 1.1`** (this applies to `revenues.value_usd` **and** the derived `latest_revenue_usd`). `value_eur` (INT64) is the primary figure. For anything USD-precise, convert `value_eur` with `dim_currency_rates_iu` at the appropriate rate rather than trusting the `_usd` field.
+- **Revenue is estimate-heavy:** `flg_is_estimate = TRUE` (on `revenues[]`) marks modelled (non-filing) figures — filter or flag it when precision matters.
+- **Threshold shortcuts** (avoid recomputing from `revenues`): `flg_is_colt` (revenue $25M–$100M, ex-Thoroughbreds), `flg_is_thoroughbred` ($100M+ revenue, a sector-tag membership), and `year_became_thoroughbred` (year the company first reached ≥$100M revenue).
+
 ## Step 4: Choose the right table
 
 | Question type | Primary table | Notes |
 |---|---|---|
 | VC funding by year/region | `vc_funding_iu` or `funding_iu` + `flg_is_vc_round` | `vc_funding_iu` pre-excludes outside tech + mature |
+| **Median / quartile / average VC round size by stage** | **`vc_combined_rounds_iu`** | **The combined-round table — base round + extensions summed, mega-rounds clustered. This is the only correct source for round-size stats; per-event `vc_funding_iu.amount_usd` answers a different question. Population baked in — apply no VC defaults. See Common Query Templates.** |
 | Total funding incl. grants/debt | `funding_iu` | Apply default exclusions manually |
-| Employee/revenue/valuation/EBITDA/market-cap trends | `timeseries_data_iu` | Join on `entity_id` (NOT `bobject_id`); forward-filled |
+| Employee/valuation/EBITDA/market-cap trends over time | `timeseries_data_iu` | Join on `entity_id` (NOT `bobject_id`); forward-filled |
+| Single company's current/headline revenue | `entities_iu.latest_revenue_usd` (+ `latest_revenue_year`) | Scalar shortcut; flat `value_eur × 1.1`; may lag the max year in `revenues[]` |
+| Company revenue — fiscal-year actuals/estimates | `entities_iu.revenues[]` | One row per fiscal `year`; `value_usd` is a flat `value_eur × 1.1` approx (convert `value_eur` for precision); `flg_is_estimate` marks modelled figures |
+| Revenue over time (forward-filled series) | `timeseries_data_iu.revenue_usd` | Aligned with other time-series metrics; last value carried forward. Don't mix with `revenues[]` in one metric |
+| A company's "last / current round" | `entities_iu.last_funding_round_id` → join `funding_iu.id` | Entity pointer to the most recent funding round (excludes exits; may be a grant/non-VC round). See Common Query Templates → "Most-recent round per company" |
 | **Combined / aggregate EV, EV per country/region, EV-over-time** | **`timeseries_data_iu.valuation_usd` (filter `year`)** | Mirrors the platform stat; `latest_valuation_usd` undercounts ~4–10%. One row/entity/year — safe to `SUM`. See Step 2 → EV valuation source. |
 | Single company's headline valuation / valuation ranking | `entities_iu.latest_valuation_usd` | Scalar "latest" only — do NOT sum across an ecosystem |
 | Investor portfolios | `investors_iu` + `funding_iu` | UNNEST `funding_investors` to link; `entities_invested_in` for portfolio |
@@ -334,7 +440,7 @@ OR EXISTS (
 | Exit data | `funding_iu` only | `vc_funding_iu` does NOT contain exits; or use entity `flg_is_exited`/`year_of_exit` |
 | Job openings / hiring | `jobs_iu` | Join `entity_id` → entities.id; entity-level `flg_is_hiring` |
 | Lists & landscapes | `dim_lists_iu` | UNNEST `entity_ids` to get members |
-| News / press | `news_iu` | UNNEST `mentioned_entities` (join `.id` → entities.id) |
+| News / press | `news_iu` | UNNEST `mentioned_entities`, join `.id` → `entities_iu.id` (⚠ schema in flux) |
 | Dealroom Signal ranking | `entities_iu` | Use `e.dealroom_signal.rating` (STRUCT, no UNNEST) |
 
 ## Step 5: Write clean SQL
@@ -345,114 +451,23 @@ OR EXISTS (
 - No `SELECT *`
 - BigQuery GoogleSQL syntax only
 
-## Step 6: Emit the companion sanity-check query
+## Step 6: Run the companion sanity check
 
-After the main query, produce its companion sanity-check query (PART 4) so the user can run both in parallel.
+After the main query returns, build its companion sanity-check query (PART 4) and run it with
+**`run_sanity_check`** — NOT a second `run_bigquery`. The check tool routes the result to the analysis
+panel as a pass/flag verdict; `run_bigquery` would open a second results tab, and a validation
+aggregate sitting next to the answer in identical styling reads as a second answer. Then reconcile the
+two yourself before the number reaches the answer or a chart.
 
----
-
-# PART 2 — Prompting the BigQuery Agent
-
-Use this when the user wants help writing a prompt to send to the Dealroom BigQuery agent.
-
-## Core Principle
-
-**Name the exact fields and arrays.** The agent guesses when you're vague — and often guesses wrong. Specificity is the single biggest lever for accuracy.
-
-| Vague prompt | What happens | Structured prompt | What happens |
-|---|---|---|---|
-| "AI startups" | Broad regex across arrays | "technology tag 'Artificial Intelligence' in technologies array" | Exact match |
-| "in Europe" | Sometimes uses `continent` | "country_region contains 'Europe'" | Correct field + explicit definition |
-| "deep tech" | Checks sectors (0 rows) | "technology tag 'Deep Tech' in technologies array" | Correct match |
-| "exclude mature" | Skips or over-excludes | "exclude growth_stage = 4 (Mature)" | Precise exclusion |
-| "companies" | Mixes in persons/funds | "entity_type='organization' and organization_subtype='company'" | Correct population |
-
-**Don't over-specify the SQL logic.** Name the fields, arrays, and values — the agent handles joins, CTEs, and aggregations reliably. Asking it to "think step by step" actually makes results worse.
-
-## Prompt Template
-
-```
-[What you want — one sentence]
-
-Filters:
-- [Field/array]: [exact value]
-- Entity: entity_type / organization_subtype as needed
-- Location: [HQ region via continent | named region via country_region], [HQ only for VC funding | HQ or founding for EV/other]
-- Funding: [table and flags]
-- Output: [columns], [ordering], [limit]
-- Show the SQL
-```
-
-**For VC funding queries, always include these three exclusions plus HQ-only location:**
-```
-- Location: HQ only (single location per company)
-- Exclude sector 'outside tech' from sectors array
-- Exclude growth_stage = 4 (Mature)
-- Exclude rounds: SPAC PRIVATE PLACEMENT, GRANT
-```
-
-**For EV queries (valuations, unicorns), always include these four exclusions plus HQ-or-founding location:**
-```
-- Location: HQ or founding, deduplicate so each company is counted once
-- Exclude sector 'outside tech' from sectors array
-- Exclude growth_stage = 4 (Mature)
-- Exclude launch_year < 1990 (strict, drop NULL launch_year)
-- Exclude sector 'mature company' from sectors array
-```
-
-### Example Prompt (VC funding query)
-
-```
-Count VC-backed companies in Europe with the following filters:
-- Entity: entity_type='organization' and organization_subtype='company'
-- Must have technology tag 'Artificial Intelligence' in the technologies array
-- Must have industry 'health' in the industries array
-- Location: country_region contains 'Europe', HQ only
-- Exclude sector 'outside tech' from sectors array
-- Exclude growth_stage = 4 (Mature)
-- Exclude rounds: SPAC PRIVATE PLACEMENT, GRANT
-- Funding: use vc_funding table OR funding table with flg_is_vc_round = TRUE
-- Show: country, company count, total VC funding
-- Top 15 by company count
-- Show the SQL
-```
-
-**Always include "Show the SQL"** — the agent stops showing SQL after ~3 messages in a thread unless asked. Then emit the companion sanity-check query (PART 4) so it can be run alongside.
-
-**For non-VC-funding queries**, do not auto-include the standard exclusions. Let the user specify what they want filtered.
-
-**For NULL handling**, be explicit: "Exclude X but keep NULL values" → agent uses `field != 'X' OR field IS NULL`.
-
-**For output shape**, be explicit: "Return a single number" or "Group by country only" — otherwise the agent may add unrequested GROUP BY dimensions.
-
-**For monetary amounts, always return the full raw value.** Do not divide by 1,000,000 or 1,000,000,000, and do not append an "m"/"b" suffix or otherwise abbreviate. The agent sometimes defaults to `ROUND(SUM(amount_usd)/1e6, 1)` with an "m" label or `/1e9` with a "b" — we never want this. Amounts like `amount_usd` and valuation columns must be output in full (e.g. `1500000000`, not `1.5b` or `1500m`). When prompting, add: "Return all monetary amounts as full raw values in USD — do not divide by million/billion or add m/b suffixes."
-
-**For time-series output, pivot years horizontally by default — one column per year, not one row per year.** The agent defaults to a long format (a `year` column with one row per year), but we want wide format so it pastes straight into Datawrapper: each year is its own column and each metric is a single row across those columns. Use BigQuery's `PIVOT` operator with an explicit year list, or conditional aggregation:
-```sql
-SELECT
-  'total_capital_usd' AS metric,
-  SUM(CASE WHEN year = 2015 THEN amount_usd END) AS y2015,
-  SUM(CASE WHEN year = 2016 THEN amount_usd END) AS y2016,
-  -- … one column per year through the latest …
-  SUM(CASE WHEN year = 2025 THEN amount_usd END) AS y2025
-FROM …
-```
-When the result has multiple metrics (e.g. `total_rounds`, `total_capital_usd`, `pct_foreign`), emit one row per metric with years as columns. When prompting, add: "Pivot years horizontally — one column per year, one row per metric — so it pastes into Datawrapper. Do not output a long format with one row per year."
-
-**The year columns must span the full range present in the data, not a fixed start.** Because pivoting requires naming each year column explicitly, any year not named is *silently dropped* — there's no error, and in wide format it doesn't even leave a visible gap, so totals quietly undercount. The `2015 … 2025` range above is illustrative only; it is **not** a floor. Before pivoting, determine the actual range (e.g. check `MIN(year)`/`MAX(year)` for the filtered set) and generate a column for every year in it — including years before 2015 if the data has them. If a deliberate cutoff is wanted (e.g. "from 2015 onward"), apply it as an explicit `WHERE year >= 2015` filter and state that earlier years are excluded by design — don't achieve it implicitly by omitting columns.
-
-## Complex Sub-Segments
-
-For queries combining multiple sector/technology/industry filters (e.g., "medical devices AND AI but NOT pharmaceutical"):
-1. Break into sequential messages — counts → breakdowns → derived variables
-2. Catch errors at each step before building further
-3. For queries past ~200 lines, provide a SQL template and ask the agent to modify specific parts
+Run it when the Sanity toggle is on, or when the analyst asks for it. Each check is a second billed
+query, so for a pure schema/discovery lookup just say no check was needed.
 
 ---
 
-# PART 3 — Reviewing & Correcting Agent SQL
+# PART 3 — Review your SQL before you run it
 
-When a user pastes agent-generated SQL, run this checklist. Most errors hit at least one of these.
+Run this checklist over your own draft. These are the mistakes that recur, and every one of them
+returns a plausible-looking number rather than an error, so nothing downstream will catch them.
 
 ## Quick Correction Checklist
 
@@ -460,15 +475,15 @@ When a user pastes agent-generated SQL, run this checklist. Most errors hit at l
 
 1. ☐ Outside tech excluded from sectors array?
 2. ☐ Mature excluded? `(growth_stage IS NULL OR growth_stage != 4)` — not `growth_stage_desc LIKE '%mature%'` and not a fixed `= 'Operational'`
-3. ☐ SPAC PRIVATE PLACEMENT and GRANT rounds excluded?
+3. ☐ No round-name exclusions added? (`flg_is_vc_round = TRUE` is the complete VC selection — `round NOT IN ('SPAC PRIVATE PLACEMENT', 'GRANT')` is redundant with it; never add it)
 4. ☐ `flg_is_vc_round` (not `flg_is_funding_round`) for VC queries?
 
-**For EV queries (valuations, unicorns), check all four defaults:**
+**For EV queries (valuations, unicorns), check the three defaults:**
 
 E1. ☐ Outside tech excluded from sectors array?
 E2. ☐ Mature excluded? `(growth_stage IS NULL OR growth_stage != 4)`
 E3. ☐ `launch_year >= 1990` applied (strict — drops NULLs)?
-E4. ☐ `'mature company'` sector tag excluded from sectors array? (**Drop this if mirroring a platform view** — the app doesn't apply the tag; add `company_status != 3` instead.)
+E4. ☐ `'mature company'` sector tag NOT excluded? (Removed from the defaults 2026-08-25 — the platform's EV view never applied it. Apply only on an explicit user ask.)
 E5. ☐ **Combined/aggregate EV uses `timeseries_data_iu.valuation_usd` for the target year, NOT `SUM(latest_valuation_usd)`?** (latter undercounts ~4–10%.)
 E6. ☐ **Per-country/region EV: multi-membership dedup (`DISTINCT id, country`, `founding_or_hq anyof`), NOT `ROW_NUMBER()` single-assignment?** Company count via `LEFT JOIN` (includes unvalued), not `valuation IS NOT NULL`?
 
@@ -482,8 +497,9 @@ E6. ☐ **Per-country/region EV: multi-membership dedup (`DISTINCT id, country`,
 10. ☐ Stage comparisons use `standardised_round_label` (the true stage), not raw `round` (self-reported/marketing)? NULLs excluded, not backfilled from `round`?
 11. ☐ "Exclude closed" → `(company_status IS NULL OR company_status != 3)`? Not `= 'operational'` (drops Acquired + Low Activity)?
 12. ☐ Median uses `APPROX_QUANTILES`, not row-level list?
+12b. ☐ **Round-size medians/quartiles read `vc_combined_rounds_iu.total_amount_usd`, not per-event `vc_funding_iu.amount_usd`?** And no VC defaults re-applied on top (population is baked in)? Filters applied at round grain via a join to `entities_iu` — not to a pre-aggregated medians result?
 13. ☐ Exact array match, not `LIKE '%…%'` across multiple arrays?
-14. ☐ All table/column names exist in `schema.json`? (Common agent errors: removed `flg_is_company`/`type_desc`; `entities_timeseries_data` instead of `timeseries_data_iu`; `raised_amount_usd_total` instead of `amount_usd`; `announced_on` instead of `year`/`month`; `last_valuation_usd` instead of `latest_valuation_usd`.)
+14. ☐ All table/column names exist in `schema.json`? (Unsure a field exists at all? `schema.md` → "Complete Column Index" lists every column by name.) (Common agent errors: removed `flg_is_company`/`type_desc`; `entities_timeseries_data` instead of `timeseries_data_iu`; `raised_amount_usd_total` instead of `amount_usd`; `announced_on` instead of `year`/`month`; `last_valuation_usd` instead of `latest_valuation_usd`.)
 15. ☐ Date filtering uses `year`/`month` integers, not `timecreate`?
 16. ☐ Output shape matches request? No unrequested GROUP BYs?
 16b. ☐ Monetary amounts returned as full raw USD values? No `/1e6`/`/1000000` with "m" suffix, no `/1e9` with "b" suffix, no abbreviation.
@@ -491,9 +507,11 @@ E6. ☐ **Per-country/region EV: multi-membership dedup (`DISTINCT id, country`,
 17. ☐ NULL handling in exclusions preserves NULLs where appropriate?
 18. ☐ People queries use standardised fields (`flg_is_founder`, `titles` array) before LIKE/REGEX fallbacks?
 19. ☐ No `flg_is_startup = TRUE` applied unless user explicitly asked? (Excludes legitimate funded startups)
-20. ☐ No `flg_is_verified = TRUE` applied unless user explicitly asked?
+20. ☐ `flg_is_verified` never applied to `entities_iu` (companies)? On funding rounds, only when the user explicitly asked?
 21. ☐ Entity population correct? Companies = `entity_type='organization' AND organization_subtype='company'`; persons = `entity_type='person'`. No use of removed `flg_is_company`/`flg_is_person`/`type`.
 22. ☐ Companion sanity-check query provided (PART 4), targeting this query's specific risks?
+23. ☐ Revenue: correct source (`entities_iu.latest_revenue_usd` scalar vs `entities_iu.revenues[]` fiscal-year vs `timeseries_data_iu.revenue_usd` forward-filled, not mixed)? `value_usd`/`latest_revenue_usd` treated as approximate (flat `value_eur × 1.1`), not an exact FX figure? `flg_is_estimate` considered?
+24. ☐ "Last round": used `entities_iu.last_funding_round_id` → `funding_iu.id` (excludes exits; may be grant/non-VC)? Or, where a stricter definition is needed, derived the latest `(year, month)` per `entity_id`? True stage via `standardised_round_label`?
 
 ### Array cheat sheet — verify the agent picked the right one:
 
@@ -514,15 +532,19 @@ If a direct industry match exists (e.g., 'space' industry), prefer the industry 
 
 ---
 
-# PART 4 — Companion Sanity-Check Query (run in parallel)
+# PART 4 — The companion sanity-check query
 
-Every substantive query ships with **one companion sanity-check query**. The user runs the main query and the check
-**in parallel** in BigQuery, exports two CSVs (main + check), and pastes both back; you then **reconcile** them. The
-check is computed **independently from the database** (not from the main CSV) — so it *validates* the result rather
-than echoing it — and exists to **anticipate that query's specific failure modes** before the number reaches a graph.
+Every substantive query gets **one companion sanity-check query**, which you run yourself with
+**`run_sanity_check`** and reconcile against the main result. The check is computed **independently
+from the database** (not from the main result) — so it *validates* the number rather than echoing it —
+and exists to **anticipate that query's specific failure modes** before the number reaches a chart.
 
-Default-on and **proportional**: 3–6 checks for an analytical query, 1–2 for a simple one; for a pure
-schema/discovery lookup, just say no check is needed.
+Keep it cheap. It is aggregates over the same filters, so it should scan a fraction of the main query.
+If a check would be expensive, pick a cheaper check rather than skipping the step.
+
+**Proportional**: 3–6 checks for an analytical query, 1–2 for a simple one; for a pure
+schema/discovery lookup, just say no check is needed. It runs when the Sanity toggle is on or the
+analyst asks — each one is a second billed query, so it is not unconditional.
 
 ## How to build it (flexible — tailor to each query)
 
@@ -532,7 +554,8 @@ schema/discovery lookup, just say no check is needed.
 3. **Emit ONE query**, `UNION ALL`-ing the checks into a tidy shape: `check STRING, value STRING, note STRING`
    (CAST every value to STRING). Keep it cheap — aggregates / `INFORMATION_SCHEMA`, reuse the main query's filters
    in a CTE, no heavy new joins. Respect skill conventions (full raw USD amounts, coded-INT filters, etc.).
-4. **Label it:** `-- SANITY CHECK for <main query>. Run alongside the main query; export as a separate CSV.`
+4. **Label it** in the `label` argument, e.g. `"sanity check — VC funding by country"`, and pass a
+   one-line `conclusion` plus a `pass`/`flag` `verdict` — those two are what the analysis panel shows.
 
 ## Risk → check catalog
 
@@ -550,17 +573,24 @@ schema/discovery lookup, just say no check is needed.
 | Stage-label coverage | stage queries | labeled vs NULL `standardised_round_label` share, so the excluded set is known |
 | Known-entity spot check | optional | assert a couple of expected entities land in the expected bucket |
 
-## Reconciling the two CSVs
+## Reconciling the two results
 
-When the user returns the main + check CSVs, compare the main-query aggregates against the independent check values:
-do totals reconcile? does `distinct = rows` (no double-count)? are overlaps expected? are dropped/NULL shares
-acceptable? any small-N medians or outliers? Present **✅ pass / ⚠️ flag** per check, with the actual numbers and what
-each implies for the main result (inflated? deflated? unreliable cell?).
+Compare the main-query aggregates against the independent check values: do totals reconcile? does
+`distinct = rows` (no double-count)? are overlaps expected? are dropped/NULL shares acceptable? any
+small-N medians or outliers?
+
+What you do with the outcome:
+
+- **All pass** — say nothing about the check. It is plumbing, not content.
+- **A check flags** — fix the query and re-run if the fix is clear. If it is a real property of the
+  data rather than a bug (a thin cell, a definition overlap), keep the number and state the caveat in
+  your answer, and pass it to `present_insights` so it lands in the analysis panel.
+- **Never** present a figure a check contradicted without saying so.
 
 ## Example shape (adapt per query)
 
 ```sql
--- SANITY CHECK for: VC-backed companies by European country. Run alongside the main query; export as a separate CSV.
+-- SANITY CHECK for: VC-backed companies by European country.
 WITH base AS ( /* same entity filters as the main query, pre-GROUP BY: e.id, loc.country */ )
 SELECT 'grain (rows)'            AS check, CAST(COUNT(*) AS STRING)                       AS value, 'compare to distinct below'            AS note FROM base
 UNION ALL SELECT 'distinct_companies',     CAST(COUNT(DISTINCT id) AS STRING),                       'should equal the main-query total'            FROM base
@@ -592,11 +622,50 @@ SELECT
   COUNT(DISTINCT f.entity_id) AS companies_funded
 FROM `omega-dahlia-347111.intelligence_unit.vc_funding_iu` f
 JOIN filtered_entities fe ON f.entity_id = fe.id
-WHERE f.round NOT IN ('SPAC PRIVATE PLACEMENT', 'GRANT')
+WHERE f.flg_is_vc_round = TRUE
   AND f.year BETWEEN 2015 AND 2025
 GROUP BY f.year
 ORDER BY f.year
 ```
+
+### Median / quartile VC round size by stage (`vc_combined_rounds_iu`)
+
+Round-size stats run off the **combined-round** table, not per-event funding rows. One row per combined round per company: a base round plus **all its extensions** summed and dated to its earliest year, with unnamed mega-rounds (≥ $100M `LATE VC`/`GROWTH EQUITY VC`, within 6 months of each other) clustered into Series C+. So `total_amount_usd` is the **total capital a company raised in that round**, which is the figure the median is meant to describe.
+
+**Medians/quartiles are computed on the fly so they can be filtered.** The standard output is one row per `(round_stage, year)` with 25th pct, median, mean, 75th pct, and round count. Canonical global query:
+
+```sql
+SELECT
+  round_stage,
+  year,
+  CAST(ROUND(APPROX_QUANTILES(total_amount_usd, 100)[OFFSET(25)]) AS NUMERIC) AS percentile_25,
+  CAST(ROUND(APPROX_QUANTILES(total_amount_usd, 100)[OFFSET(50)]) AS NUMERIC) AS median,
+  ROUND(AVG(total_amount_usd), 2)                                             AS average,
+  CAST(ROUND(APPROX_QUANTILES(total_amount_usd, 100)[OFFSET(75)]) AS NUMERIC) AS percentile_75,
+  COUNT(*)                                                                    AS num_rounds
+FROM `omega-dahlia-347111.intelligence_unit.vc_combined_rounds_iu`
+WHERE year >= 2019
+GROUP BY round_stage, year
+ORDER BY round_stage, year DESC
+```
+
+**To add filters** (geography, sector, health, year, …): join `entities_iu` on `entity_id` and add a `WHERE` — **everything else stays the same**. Company attributes all live on `entities_iu`: the `locations` array with `flg_is_hq` plus `country` / `country_region` / `continent`; the `sectors` / `technologies` / `industries` arrays; use `dim_locations_iu.flg_is_curated` for the curated-geography set. Example — EU AI Series A:
+
+```sql
+SELECT r.year,
+  CAST(ROUND(APPROX_QUANTILES(r.total_amount_usd, 100)[OFFSET(50)]) AS NUMERIC) AS median
+FROM `omega-dahlia-347111.intelligence_unit.vc_combined_rounds_iu` r
+JOIN `omega-dahlia-347111.intelligence_unit.entities_iu` e ON e.id = r.entity_id
+WHERE r.round_stage = 'Series A'
+  AND EXISTS (SELECT 1 FROM UNNEST(e.locations) loc WHERE loc.flg_is_hq AND 'Europe' IN UNNEST(loc.country_region))
+  AND EXISTS (SELECT 1 FROM UNNEST(e.technologies) t WHERE LOWER(t.name) = 'artificial intelligence')
+GROUP BY r.year ORDER BY r.year DESC
+```
+
+- **Apply no VC defaults** — the population is baked into the table (see Step 2 → Exception).
+- **Never pre-aggregate to a medians table and then filter it.** A collapsed median can't be re-filtered. Always filter at round grain, then aggregate — which is why the table ships at round level and no pre-computed medians table exists.
+- **Sanity numbers** (all years): Seed ≈ $2.5M · Series A ≈ $11M · Series B ≈ $21M · Series C+ ≈ $43M. ~145K rows / ~94K companies.
+- **Prefer medians/quartiles over `AVG`/`SUM` for headline stats** — a handful of real mega-cap rows (> $10B) skew the mean. See `schema.md` → "VC Combined Rounds Table" for the full caveat list (6-month transitive chaining, extreme amounts, stray `year < 1990` rows).
 
 ### Unicorn count by HQ region (aggregate — EV defaults applied)
 ```sql
@@ -611,11 +680,10 @@ WHERE e.flg_is_unicorn = TRUE
   AND NOT EXISTS (SELECT 1 FROM UNNEST(e.sectors) s WHERE LOWER(s.name) = 'outside tech')
   AND (e.growth_stage IS NULL OR e.growth_stage != 4)
   AND e.launch_year >= 1990
-  AND NOT EXISTS (SELECT 1 FROM UNNEST(e.sectors) s WHERE LOWER(s.name) = 'mature company')
 GROUP BY hq_region
 ORDER BY unicorn_count DESC
 ```
-Uses `flg_is_unicorn` → EV query → all four EV defaults apply. Grouped on the single HQ macro-region (`loc.continent`).
+Uses `flg_is_unicorn` → EV query → all three EV defaults apply. Grouped on the single HQ macro-region (`loc.continent`).
 For a *named* region instead (e.g. "Europe" unicorns), filter `country_region` to that exact value with `EXISTS` rather than grouping the whole array.
 
 ### Companies list (row-level — uses ROW_NUMBER)
@@ -637,6 +705,39 @@ SELECT id, name, country, hq_region FROM entity_region WHERE rn = 1
 ORDER BY name
 ```
 Note: this is a company list query, not a VC funding query, so no default exclusions applied.
+
+### Most-recent ("last") round per company
+There is no `last_round` **label** column, but there IS an entity pointer — **`entities_iu.last_funding_round_id`** — to the company's most recent funding round. **Prefer the pointer; it's a simple join, no window function:**
+```sql
+SELECT
+  e.id, e.name,
+  f.round,                       -- self-reported label
+  f.standardised_round_label,    -- true stage (NULL = not a standardised VC stage)
+  f.year, f.month, f.amount_usd,
+  f.flg_is_vc_round
+FROM `omega-dahlia-347111.intelligence_unit.entities_iu` e
+JOIN `omega-dahlia-347111.intelligence_unit.funding_iu` f
+  ON f.id = e.last_funding_round_id
+```
+- **Scope of `last_funding_round_id`:** the most recent **funding** round — verified to **exclude exits** (IPO/M&A), and it may point to a **grant or other non-VC round** (~76% are VC, ~14% grants). If you specifically want the last *VC* round, filter the joined row on `f.flg_is_vc_round = TRUE`, or use the derivation below.
+- For the **true stage** of the last round, read `standardised_round_label` (NULL = not a standardised stage; **don't backfill from `round`**).
+
+**Derivation fallback** — use this when you need a definition the pointer doesn't give (e.g. last VC round *only*, most recent event *including* exits, or a per-company history rank):
+```sql
+WITH ranked AS (
+  SELECT
+    f.entity_id, f.round, f.standardised_round_label, f.year, f.month, f.amount_usd,
+    ROW_NUMBER() OVER (
+      PARTITION BY f.entity_id
+      ORDER BY f.year DESC, f.month DESC, f.amount_usd DESC   -- tie-break same (year,month) by size
+    ) AS rn
+  FROM `omega-dahlia-347111.intelligence_unit.funding_iu` f
+  WHERE f.flg_is_vc_round = TRUE     -- "last VC round". DROP for last round of ANY type (then exits/debt/grant can win).
+)
+SELECT entity_id, round, standardised_round_label, year, month, amount_usd
+FROM ranked WHERE rn = 1
+```
+Same derivation works off `entities_iu.fundings[]` via `UNNEST(e.fundings) f` if you're already scanning entities.
 
 ---
 
@@ -663,6 +764,7 @@ Note: this is a company list query, not a VC funding query, so no default exclus
 19. **`is_founder` does not exist.** The flag is **`flg_is_founder`** (BOOL) on `entities_iu`, `people_iu`, and `people_organizations_iu`.
 20. **People_organizations dates are integers, not DATE columns.** Use `year_start`/`month_start`/`year_end`/`month_end` — there are no `start_date`/`end_date` columns.
 21. **`vc_funding_iu` has no exits.** Use `funding_iu` (`flg_is_exit = TRUE`) or entity `flg_is_exited`/`year_of_exit`.
+21b. **Acquisition "of" vs "by" flips the join — read the phrasing.** On an ACQUISITION exit row, `funding_iu.entity_id` is the TARGET (got acquired) and `funding_investors[].bobject_investor_id` is the ACQUIRER (the buyer — verified, not the target's VCs; joins to `entities_iu.id`). "Acquisitions OF X" → join `f.entity_id = X.id`; "acquisitions BY X" → `UNNEST(funding_investors)` + join `X.id = inv.bobject_investor_id` with the target geography unfiltered. (See PART 1 → Exits for both templates.)
 22. **`news_iu` schema is in flux** — confirm its columns against `schema.json` before relying on them.
 23. **Dataset rename:** the core dataset is now `intelligence_unit` (was `dealroom_intelligence`) and all core tables carry an `_iu` suffix (`entities_iu`, `funding_iu`, …). Fully qualify as `` `omega-dahlia-347111.intelligence_unit.<table>` ``. The two `power_law*` tables are the exception — they keep their plain names and still live in the **`reporting_iu`** dataset: `` `omega-dahlia-347111.reporting_iu.power_law` ``.
 24. **`investors_iu.funds` STRUCT changed.** `fund_type` is now `INT64` (was a string label) — compare against the coded INT, not a text value. `fund_date` is now `STRING` (was `DATE`) — don't apply date arithmetic to it without casting/parsing. A new `funds.source_url` (STRING) field is available.
@@ -670,15 +772,10 @@ Note: this is a company list query, not a VC funding query, so no default exclus
 26. **`dim_tags_iu` has a new `is_muted` (BOOL) column** — muted tags may need excluding depending on the use case; check it when tag selection matters.
 27. **Two new tables: `headcount_breakdown_iu` and `web_traffic_iu`.** Confirm their columns against `schema.json` before use.
 28. **STRUCT timestamp sub-fields are now `DATETIME`, not `TIMESTAMP`** in places (e.g. `dim_lists_iu.landscape_categories.timecreated`/`timeupdated`, `dim_lists_iu.users.timecreated`). Use `DATETIME` functions; and `landscape_categories.order` is a reserved word — backtick it (`` `order` ``).
+29. **`revenues.value_usd` is a flat `value_eur × 1.1`, not a real FX conversion.** It's a fixed-rate approximation. For USD-precise revenue, convert `value_eur` (the primary INT64 figure) via `dim_currency_rates_iu`. And `revenues` is estimate-heavy — check `flg_is_estimate` before treating a figure as a filing.
+30. **Two different revenue fields — don't mix them.** `entities_iu.revenues[]` = per-fiscal-year actuals/estimates (one row per `year`); `timeseries_data_iu.revenue_usd` = forward-filled series aligned with the other time-series metrics. Combining them in one metric double-counts or conflates disclosed vs carried-forward values.
+31. **"Last round": there's no `last_round` *label*, but there IS `entities_iu.last_funding_round_id`** — join it to `funding_iu.id` to read the company's most recent funding round (a simple join; no `ROW_NUMBER` needed). Scope: it **excludes exits** and may point to a **grant/non-VC round** (~76% VC, ~14% grant) — filter `flg_is_vc_round` if you need the last VC round. Read the true stage from `standardised_round_label`. For definitions the pointer doesn't give (last VC-only, incl. exits), derive via `ROW_NUMBER`. See Common Query Templates → "Most-recent round per company".
+32. **Round-size medians must come from `vc_combined_rounds_iu`, not `vc_funding_iu`.** Taking `APPROX_QUANTILES` of per-event `vc_funding_iu.amount_usd` answers a different question — it treats a base round and each of its extensions as separate rounds, so it understates the capital a company actually raised at that stage. Use `vc_combined_rounds_iu.total_amount_usd`. And **don't re-apply the VC defaults** to it: the population is baked in.
+33. **`dim_tags_iu` has a new `is_alias` (BOOL) column.** True for sector/technology/category/sub_category rows that alias another canonical tag; NULL for the other tag types. For canonical-only tags filter **`is_alias IS NOT TRUE`** — a bare `is_alias = FALSE` silently drops every NULL (not-applicable) row. Alias rows are kept deliberately because entities can be tagged via an alias id.
+34. **New `investor_type` tag type in `dim_tags_iu` (`tag_type_id = 13`) has no shared integer id.** Unlike every other tag family, join it by label: `dim_tags_iu.name = <label> AND tag_type = 'investor_type'` — there is no id to match against `investors_iu.investor_types` (an array of label strings). Note also that `investor_types` merges coarse types (angel, corporate, crowdfunding, university, government & non-profit, service provider) with fine fund sub-types (venture capital, private equity, family office, angel fund, accelerator, advisor, incubator, pension fund, fund of funds, sovereign wealth fund): **`'angel fund'` (a fund) is distinct from `'angel'` (a person)**, there is no `'investment fund'` label, and a fund with no sub-type falls back to `'other'`.
 
----
-
-# Improving the BigQuery Agent
-
-Two approaches are being explored:
-
-**Instruction-level changes:** Revised high-priority instructions have been drafted covering the four VC-funding exclusions (outside tech, mature, SPAC PP, grant rounds), deep tech definition, location/region logic, the entity_type/organization_subtype model, SQL visibility, and people data routing.
-
-**Schema-level annotations:** the dataset now ships rich column descriptions (visible via `INFORMATION_SCHEMA.COLUMN_FIELD_PATHS`) — including `entity_type`/`organization_subtype` value lists, the `growth_stage` mapping, and the `dim_tags.tag_type`→array mapping. If the agent reads schema metadata, lean on these rather than instruction text.
-
-When team members discover new agent issues, document: the prompt used, the SQL produced, what's wrong, and the corrected SQL.

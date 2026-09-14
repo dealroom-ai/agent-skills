@@ -27,6 +27,7 @@
 | `dim_lists_iu` | `intelligence_unit` | Lists / landscapes — curated entity collections with categories | — |
 | `dim_tags_iu` | `intelligence_unit` | Unified tag taxonomy (sectors, technologies, industries, sub_industries, SDGs, …) | — |
 | `dim_locations_iu` | `intelligence_unit` | Hierarchical location dimension (continent → country_region → country → state → city) | — |
+| `main_hq_regions` | `intelligence_unit` | **Curated** dimension of canonical "main HQ regions" (mostly `city_region`, e.g. Bay Area, Greater London); maps a `dim_locations_iu` id → one headline region. **Not a dbt model** — see its section | ~308 |
 | `dim_currency_rates_iu` | `intelligence_unit` | FX rates (EUR and USD) | — |
 | `eco_index_cities` | `dealroom_intelligence` | Global Tech Ecosystem Index benchmarking | — |
 | `dim_microapps_locations` | `dealroom_intelligence` | High-value locations only (use when user asks for curated/high-value hubs) | — |
@@ -89,6 +90,8 @@ Entity locations array UNNEST → dim_locations_iu by name/id
 - `launch_year`, `launch_month` — `launch_year` is the year the entity was founded/launched
 - `year_became_vc_backed` — year the company first received VC backing (earliest VC round year); NULL if never VC-backed
 - `year_became_unicorn`, `year_became_thoroughbred` — year the company crossed the unicorn / thoroughbred threshold; NULL if it never did
+- `flg_is_exited` (BOOL) — TRUE if the entity has had at least one exit round (ACQUISITION, IPO, BUYOUT, SPAC IPO)
+- `year_of_exit` (INT64) — year of the entity's **FIRST** exit (earliest exit round year), not the latest; NULL if never exited. Use these two for "exited companies" / "year of first exit" instead of joining `funding_iu`. For first-exit *month* or exit *type* you still need `funding_iu` (`MIN(year*100+month)` where `flg_is_exit`)
 - `total_funding_usd`, `total_vc_funding_usd` — entity-level aggregates
 - `latest_valuation_usd`, `latest_valuation_eur`, `valuation_year`, `valuation_month` — most recent known company valuation (note: `latest_…`, not `last_…`). IPO/exit valuations live in `funding_iu.valuation_usd` with `flg_is_exit = TRUE`, not as a separate entity column.
 
@@ -127,14 +130,14 @@ All NUMERIC type. Access directly: `e.dealroom_signal.rating`
 - `entity_id` → entities_iu.id
 - `year` (INT64), `month` (INT64) — the round date
 - `amount_usd` (NUMERIC) — round amount in USD
-- `round` (STRING) — primary round classifier, always populated. Values include: SERIES A, SERIES B, SEED, PRE-SEED, EARLY VC, LATE VC, GROWTH EQUITY, ANGEL, DEBT FINANCING, GRANT, CONVERTIBLE NOTE, SPAC PRIVATE PLACEMENT, IPO, MERGER/ACQUISITION, SECONDARY MARKET, etc.
+- `round` (STRING) — primary round classifier, always populated. Exact production values (no others exist — do not invent labels): SEED, ACQUISITION, GRANT, EARLY VC, SERIES A, IPO, DEBT, SERIES B, SUPPORT PROGRAM, SPINOUT, ANGEL, POST IPO EQUITY, LATE VC, GROWTH EQUITY VC, SERIES C, POST IPO DEBT, GROWTH EQUITY NON VC, CONVERTIBLE, BUYOUT, PRIVATE PLACEMENT NON VC, SERIES D, SECONDARY, MERGER, SERIES E, POST IPO CONVERTIBLE, PRIVATE PLACEMENT VC, ICO, BANKRUPTCY, CORPORATE SPINOUT, SERIES F, SPAC IPO, 'PROJECT, REAL ESTATE, INFRASTRUCTURE FINANCE', LENDING CAPITAL, MEDIA FOR EQUITY, SPAC PRIVATE PLACEMENT, SERIES G, POST IPO SECONDARY, SERIES H, SERIES I. ⚠ `MERGER/ACQUISITION`, `DEBT FINANCING`, `CONVERTIBLE NOTE`, `SECONDARY MARKET` and bare `GROWTH EQUITY` do **NOT** exist — filtering on them silently returns zero rows. `PRE-SEED` is a `standardised_round_label` value only, never a `round`. The four exit values are ACQUISITION, IPO, BUYOUT, SPAC IPO.
 - `standardised_round_label` (STRING) — granular VC equity label. More precise (MICRO-SEED, PRE-SEED, SEED, SEED+, SEED EXTENSION, SERIES A, SERIES A EXTENSION, etc.) but NULL for ~790K of ~1M rows. Use only when you need precise stage breakdowns within VC rounds.
-- `flg_is_vc_round` (BOOLEAN) — TRUE for VC rounds
+- `flg_is_vc_round` (BOOLEAN) — TRUE for VC rounds. **This flag already excludes grants, SPAC private placements and debt** (verified: 0 such rounds are flagged), so `round NOT IN ('SPAC PRIVATE PLACEMENT','GRANT')` on top of it is redundant. ⚠ It does **not** exclude `CONVERTIBLE` rounds (~10.6k are flagged VC — convertible notes are VC financing); only add a `round NOT IN` filter if you specifically need to drop convertibles
 - `flg_is_vc_backed_round` (BOOLEAN) — TRUE for VC-backed defining rounds
 - `flg_is_pe_round` (BOOLEAN) — TRUE for private equity rounds (BUYOUT or GROWTH EQUITY NON VC)
 - `flg_is_funding_round` (BOOLEAN) — TRUE for all funding rounds (including debt, grants)
 - `flg_is_exit` (BOOLEAN) — TRUE for exits (IPO, M&A)
-- `flg_is_verified` (BOOLEAN) — TRUE for verified rounds. Apply only when the user explicitly asks for verified rounds only.
+- `flg_is_verified` (BOOLEAN) — TRUE for verified rounds. Apply only when the user explicitly asks for verified rounds only. Rounds ONLY — never filter companies on `entities_iu.flg_is_verified`.
 - `funding_investors` — ARRAY<STRUCT<bobject_investor_id, flg_is_lead_investor>>
 
 ---
@@ -378,6 +381,22 @@ Active job openings per entity. Join `entity_id` to `entities_iu.id`. Coverage i
 
 ---
 
+## Main HQ Regions Table (`main_hq_regions`)
+
+**Curated** lookup that assigns each `dim_locations_iu` location to a single canonical **main HQ region** — the headline region a company's HQ rolls up to (mostly metro `city_region`s like Bay Area, Greater London, Ile-de-France). ~308 rows. **Not a dbt model** — hand-curated and loaded directly into BigQuery; its columns are pulled into `schema.json` by `update-schema.py` (types from BigQuery, descriptions curated), so they grep like any other table.
+
+- `dim_locations_iu_unique_id` (INT64) — join key → `dim_locations_iu.unique_id`
+- `location_type` (STRING) — granularity of this region: `city_region` (most), `city`, `state`, `country`
+- `main_hq_region` (STRING) — the region's canonical name (equals the `dim_locations_iu.name`)
+- `company_count` (INT64) — companies HQ'd in this region (per the curation)
+- `source` (STRING) — provenance / quality flag: `curated` (trusted), `uncurated` (auto-matched, lower confidence), plus a few carrying a `… verify` note. **Filter `source = 'curated'`** for clean analyses.
+
+### How to use it (region rankings, e.g. deep-tech-by-region)
+
+Tie each company to one region id, join this table on `dim_locations_iu_unique_id`, filter `source = 'curated'`, then `GROUP BY main_hq_region` and rank. The company→region id is `entities_iu.main_hq_region_unique_id` — **declared in dbt but not yet built in BigQuery**, so wait for it rather than back-computing from the HQ `locations` arrays. To cut the ranking by segment, filter the company set (e.g. deep tech = `technologies` id `6`; science-based `22969`; hard tech `22390`) and pick the metric (`COUNT(*)`, `SUM(total_vc_funding_usd)`, unicorns via `flg_is_unicorn`) — applying the usual VC/EV default exclusions for funding/valuation ranks. Validated deep-tech order: Bay Area, Greater London, New York Metro, Greater Tel Aviv, Greater Boston.
+
+---
+
 ## Dim_Currency_Rates Table (`dim_currency_rates_iu`)
 
 - `currency` (STRING — code), `currency_name` (STRING)
@@ -455,3 +474,92 @@ Same structure as `power_law` but scoped to the **United States**, with Rising S
 All other columns (`unicorn_*`, `tb_*`, investor identity, activity, fund, ranking) are identical to `power_law`.
 
 **Conversion logic:** `eur_rate` = units of local currency per 1 EUR. To convert to EUR: `amount_local / eur_rate`. Entity-level EUR fields are also available: `latest_valuation_eur`, valuations sub-array `value_eur`.
+
+---
+
+<!-- BEGIN GENERATED COLUMN INDEX -->
+
+## Complete Column Index
+
+**Generated from `schema.json` by `scripts/update-schema.py` — do not hand-edit.**
+
+Every column and nested field, names only, so you can answer *"does this column exist?"* without guessing a name. Types and descriptions are NOT here — once you have the name, grep `schema.json`. Nested STRUCT/ARRAY fields appear as `parent.field` and require `UNNEST`.
+
+
+### `entities_iu` (177)
+
+`id`, `uuid`, `entity_type`, `organization_subtype`, `main_hq_region_unique_id`, `name`, `aliases`, `dealroom_url`, `tagline`, `linkedin`, `twitter`, `instagram`, `crunchbase`, `angellist`, `website`, `website_domain`, `image`, `about`, `about_ai_generated`, `summary`, `launch_year`, `launch_month`, `closing_year`, `closing_month`, `verify_bobject_id`, `flg_is_verified`, `flg_is_vcbacked`, `flg_is_funded`, `flg_is_startup`, `alumni_count`, `alumni_founder_count`, `alumni_founded_companies_count`, `alumni_unicorn_companies_count`, `flg_is_investor`, `flg_is_founder`, `flg_is_executive`, `flg_is_partner`, `flg_is_colt`, `flg_is_thoroughbred`, `flg_is_spinout`, `flg_is_titan`, `flg_is_rising_star`, `flg_is_exited`, `year_of_exit`, `flg_is_hiring`, `flg_is_pe_owned`, `year_became_vc_backed`, `year_became_thoroughbred`, `sectors`, `sectors.id`, `sectors.name`, `sdgs`, `sdgs.id`, `sdgs.name`, `ownerships`, `ownerships.id`, `ownerships.name`, `client_focus`, `business_model`, `business_model.id`, `business_model.name`, `income_stream`, `income_stream.id`, `income_stream.name`, `technologies`, `technologies.id`, `technologies.name`, `techstack_categories`, `techstack_categories.id`, `techstack_categories.name`, `industries`, `industries.id`, `industries.name`, `sub_industries`, `sub_industries.id`, `sub_industries.name`, `locations`, `locations.id`, `locations.city`, `locations.state`, `locations.country`, `locations.continent`, `locations.city_id`, `locations.state_id`, `locations.country_id`, `locations.continent_id`, `locations.city_unique_id`, `locations.state_unique_id`, `locations.country_unique_id`, `locations.continent_unique_id`, `locations.city_region`, `locations.country_region`, `locations.city_region_ids`, `locations.country_region_ids`, `locations.city_region_unique_ids`, `locations.country_region_unique_ids`, `locations.lat`, `locations.lon`, `locations.flg_is_hq`, `locations.flg_is_founding`, `latest_valuation_eur`, `latest_valuation_usd`, `valuation_year`, `valuation_month`, `flg_is_valuation_estimate`, `valuations`, `valuations.year`, `valuations.month`, `valuations.value_eur`, `valuations.value_usd`, `valuations.flg_is_estimate`, `revenues`, `revenues.year`, `revenues.value_eur`, `revenues.value_usd`, `revenues.flg_is_estimate`, `latest_revenue_usd`, `latest_revenue_year`, `flg_is_unicorn`, `unicorn_type`, `year_became_unicorn`, `month_became_unicorn`, `date_became_unicorn`, `fundings`, `fundings.id`, `fundings.amount`, `fundings.currency`, `fundings.amount_eur`, `fundings.amount_usd`, `fundings.year`, `fundings.month`, `fundings.week`, `fundings.week_year`, `fundings.round`, `fundings.standardised_round_label`, `fundings.flg_is_verified`, `fundings.flg_is_funding_round`, `fundings.flg_is_vc_round`, `fundings.flg_is_vc_backed_round`, `fundings.flg_is_pe_round`, `fundings.flg_is_exit`, `fundings.valuation_eur`, `fundings.valuation_usd`, `fundings.funding_investors`, `fundings.funding_investors.bobject_investor_id`, `fundings.funding_investors.flg_is_lead_investor`, `fundings.multiples`, `fundings.multiples.ev_revenue_multiple`, `fundings.multiples.ev_ebitda_multiple`, `fundings.multiples.ev_profit_multiple`, `fundings.quarter`, `fundings.timecreate`, `fundings.timeupdate`, `total_funding_usd`, `total_funding_eur`, `total_vc_funding_usd`, `total_vc_funding_eur`, `last_funding_round_id`, `employees`, `growth_stage`, `growth_stage_desc`, `company_status`, `company_status_desc`, `dealroom_signal`, `dealroom_signal.rating`, `dealroom_signal.completeness`, `dealroom_signal.team_strength`, `dealroom_signal.growth_rate`, `dealroom_signal.timing`, `similarweb_traffic`, `similarweb_3_months_growth`, `timecreate`, `patents_count`, `latest_market_cap_eur`, `latest_market_cap_usd`, `market_cap_year`, `market_cap_month`
+
+### `funding_iu` (30)
+
+`id`, `entity_id`, `amount`, `currency`, `amount_eur`, `amount_usd`, `year`, `month`, `week`, `week_year`, `round`, `standardised_round_label`, `flg_is_verified`, `flg_is_funding_round`, `flg_is_vc_round`, `flg_is_vc_backed_round`, `flg_is_pe_round`, `flg_is_exit`, `valuation_eur`, `valuation_usd`, `funding_investors`, `funding_investors.bobject_investor_id`, `funding_investors.flg_is_lead_investor`, `multiples`, `multiples.ev_revenue_multiple`, `multiples.ev_ebitda_multiple`, `multiples.ev_profit_multiple`, `quarter`, `timecreate`, `timeupdate`
+
+### `vc_funding_iu` (24)
+
+`id`, `entity_id`, `amount`, `currency`, `amount_eur`, `amount_usd`, `year`, `month`, `week`, `week_year`, `round`, `standardised_round_label`, `flg_is_verified`, `flg_is_funding_round`, `flg_is_vc_round`, `flg_is_exit`, `valuation_eur`, `valuation_usd`, `funding_investors`, `quarter`, `timecreate`, `timeupdate`, `funding_investors.bobject_investor_id`, `funding_investors.flg_is_lead_investor`
+
+### `vc_combined_rounds_iu` (6)
+
+`entity_id`, `year`, `round_stage`, `combined_round_label`, `round_type`, `total_amount_usd`
+
+### `investors_iu` (36)
+
+`bobject_investor_id`, `entities_invested_in`, `investor_types`, `deal_structure`, `deal_structure.id`, `deal_structure.name`, `preferred_round`, `total_investments_count`, `min_deal_size`, `max_deal_size`, `industry_experience`, `industry_experience.id`, `industry_experience.name`, `sub_industry_experience`, `sub_industry_experience.id`, `sub_industry_experience.name`, `tags_experience`, `tags_experience.id`, `tags_experience.name`, `total_funding_eur`, `total_funding_usd`, `country_experience`, `investment_stages`, `known_limited_partners`, `lp_investments`, `funds`, `funds.fund_id`, `funds.fund_name`, `funds.amount`, `funds.currency`, `funds.fund_type`, `funds.flg_is_closed`, `funds.fund_date`, `funds.source_url`, `aum_eur`, `aum_usd`
+
+### `people_iu` (34)
+
+`id`, `name`, `image`, `founder_score`, `founded_entities_ids`, `gender`, `gender_desc`, `backgrounds`, `backgrounds.id`, `backgrounds.name`, `universities`, `universities.education_id`, `universities.bobject_university_id`, `universities.degree`, `universities.degree.id`, `universities.degree.name`, `universities.degree.years`, `universities.majors`, `universities.majors.id`, `universities.majors.name`, `universities.year_start`, `universities.year_end`, `origin_country_unique_id`, `origin_emigration_age`, `origin_arrival_year`, `origin_match_method`, `origin_resolution_rule`, `founded_companies_total_funding_eur`, `founded_companies_total_funding_usd`, `flg_is_founder`, `flg_is_serial_founder`, `flg_is_promising_founder`, `flg_is_strong_founder`, `flg_is_super_founder`
+
+### `people_organizations_iu` (15)
+
+`id`, `person_id`, `entity_id`, `raw_title`, `titles`, `titles.id`, `titles.name`, `flg_is_past`, `flg_is_founder`, `flg_is_executive`, `flg_is_partner`, `year_start`, `month_start`, `year_end`, `month_end`
+
+### `timeseries_data_iu` (8)
+
+`entity_id`, `year`, `employees`, `revenue_usd`, `valuation_usd`, `ebitda_usd`, `market_cap_usd`, `vc_funding_usd`
+
+### `headcount_breakdown_iu` (8)
+
+`entity_id`, `breakdown_type`, `item_id`, `item_name`, `year`, `month`, `period_date`, `percentage`
+
+### `web_traffic_iu` (5)
+
+`entity_id`, `year`, `month`, `period_date`, `visits`
+
+### `news_iu` (31)
+
+`id`, `slug`, `title`, `content`, `source_urls`, `images`, `images.id`, `images.name`, `images.flg_is_primary`, `pub_datetime`, `news_types`, `news_types.id`, `news_types.name`, `importance_score`, `flg_is_pinned`, `mentioned_entities`, `mentioned_entities.id`, `mentioned_entities.uuid`, `mentioned_entities.name`, `mentioned_entities.website`, `mentioned_entities.sector`, `mentioned_entities.hq_country`, `fundings`, `fundings.id`, `fundings.round`, `fundings.standardised_round_label`, `fundings.amount_eur`, `fundings.amount_usd`, `fundings.date`, `timecreate`, `timeupdate`
+
+### `jobs_iu` (19)
+
+`id`, `entity_id`, `title`, `url`, `source`, `job_type`, `city`, `country`, `formatted_location`, `post_language`, `latitude`, `longitude`, `date_posted`, `expired_date`, `salary_min`, `salary_max`, `currency`, `department`, `contract_type`
+
+### `dim_lists_iu` (35)
+
+`id`, `list_creator_id`, `api_auth_id`, `type`, `title`, `summary`, `description`, `content`, `flg_is_public`, `flg_is_special`, `share_token`, `flg_alerts_enabled`, `flg_is_featured`, `pinned_at`, `flg_is_visible`, `flg_is_counted_similar`, `list_created_at`, `list_updated_at`, `landscape_categories`, `landscape_categories.id`, `landscape_categories.title`, `landscape_categories.summary`, `landscape_categories.description`, `landscape_categories.order`, `landscape_categories.timecreated`, `landscape_categories.timeupdated`, `entity_ids`, `entity_ids.id`, `entity_ids.entity_id`, `entity_ids.timecreated`, `entity_ids.timeupdated`, `entities_count`, `users`, `users.person_id`, `users.timecreated`
+
+### `dim_tags_iu` (13)
+
+`id`, `unique_id`, `name`, `description`, `is_muted`, `is_approved`, `is_alias`, `tag_type`, `parent_id`, `aliases`, `name_norm`, `searchable_text`, `text_embedding`
+
+### `dim_locations_iu` (32)
+
+`unique_id`, `id`, `name`, `aliases`, `location_type`, `display_name`, `display_location_type`, `state_parent`, `country_parent`, `continent_parent`, `state_parent_id`, `country_parent_id`, `continent_parent_id`, `state_parent_unique_id`, `country_parent_unique_id`, `continent_parent_unique_id`, `region_parent`, `region_parent_ids`, `region_parent_unique_ids`, `city_region_parent`, `city_region_parent_ids`, `city_region_parent_unique_ids`, `lat`, `lon`, `population`, `gdp_millions_dollars`, `name_norm`, `searchable_text`, `text_embedding`, `flg_is_curated`, `flg_in_eco_index_2026`, `location_type_id`
+
+### `dim_currency_rates_iu` (4)
+
+`currency`, `currency_name`, `eur_rate`, `usd_rate`
+
+### `power_law` (59)
+
+`investor_name`, `investor_country`, `launch_year`, `age`, `link`, `preferred_round`, `investor_type`, `sub_types`, `bobject_investor_id`, `region`, `region_type`, `sector`, `sector_type`, `unicorn_seed`, `unicorn_early`, `unicorn_late`, `tb_seed`, `tb_early`, `tb_late`, `colt_seed`, `colt_early`, `unicorn_seed_names`, `unicorn_early_names`, `unicorn_late_names`, `tb_seed_names`, `tb_early_names`, `tb_late_names`, `colt_seed_names`, `colt_early_names`, `lead_unicorn_seed_names`, `lead_unicorn_early_names`, `lead_unicorn_late_names`, `lead_tb_seed_names`, `lead_tb_early_names`, `lead_tb_late_names`, `lead_colt_seed_names`, `lead_colt_early_names`, `unicorn_rank`, `decacorn_rank`, `unicorn_seed_score`, `unicorn_early_score`, `unicorn_late_score`, `tb_seed_score`, `tb_early_score`, `tb_late_score`, `colt_seed_score`, `colt_early_score`, `score_total`, `rounds_since_1990`, `rounds_2024`, `rounds_2025`, `last_fund_amount`, `last_fund_date`, `fund_status`, `funds_names`, `aum`, `activity`, `region_cume_dist`, `percentile`
+
+### `power_law_rising_star_usa` (59)
+
+`investor_name`, `investor_country`, `launch_year`, `age`, `link`, `preferred_round`, `investor_type`, `sub_types`, `bobject_investor_id`, `region`, `region_type`, `sector`, `sector_type`, `unicorn_seed`, `unicorn_early`, `unicorn_late`, `tb_seed`, `tb_early`, `tb_late`, `rising_star_seed`, `rising_star_early`, `unicorn_seed_names`, `unicorn_early_names`, `unicorn_late_names`, `tb_seed_names`, `tb_early_names`, `tb_late_names`, `rising_star_seed_names`, `rising_star_early_names`, `lead_unicorn_seed_names`, `lead_unicorn_early_names`, `lead_unicorn_late_names`, `lead_tb_seed_names`, `lead_tb_early_names`, `lead_tb_late_names`, `lead_rising_star_seed_names`, `lead_rising_star_early_names`, `unicorn_rank`, `decacorn_rank`, `unicorn_seed_score`, `unicorn_early_score`, `unicorn_late_score`, `tb_seed_score`, `tb_early_score`, `tb_late_score`, `rising_star_seed_score`, `rising_star_early_score`, `score_total`, `rounds_since_1990`, `rounds_2024`, `rounds_2025`, `last_fund_amount`, `last_fund_date`, `fund_status`, `funds_names`, `aum`, `activity`, `region_cume_dist`, `percentile`
+
+### `main_hq_regions` (5)
+
+`dim_locations_iu_unique_id`, `location_type`, `main_hq_region`, `company_count`, `source`
+
+<!-- END GENERATED COLUMN INDEX -->

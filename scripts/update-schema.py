@@ -9,14 +9,16 @@ get an empty data_type and are reported so you know a `dbt run` is still pending
 
 Usage:
     python3 scripts/update-schema.py                    # rewrite schema.json + diff
-    python3 scripts/update-schema.py --check            # diff only, don't write
+    python3 scripts/update-schema.py --check            # diff schema.json only, don't write
     python3 scripts/update-schema.py --no-types         # skip BigQuery, yml only
     python3 scripts/update-schema.py --dbt-repo PATH     # point at your dbt clone
 
 The dbt repo path resolves from --dbt-repo, then $DBT_REPO, then a few common
-locations. schema.md is hand-written narrative and is NOT touched.
+locations. Curated tables not in dbt are listed in NON_DBT (types from BigQuery,
+descriptions inline). schema.md is hand-written EXCEPT its GENERATED COLUMN INDEX
+block, which a normal run rewrites from schema.json; --check does not validate it.
 """
-import json, subprocess, sys, os
+import json, subprocess, sys, os, re
 from pathlib import Path
 
 try:
@@ -41,7 +43,30 @@ SOURCES = {
     ),
 }
 
+# Curated tables NOT in dbt — columns come from BigQuery (types), descriptions inline.
+# {dataset: {table: {column: description}}}, in the order they should appear.
+NON_DBT = {
+    "intelligence_unit": {
+        "main_hq_regions": {
+            "dim_locations_iu_unique_id": "Join key → dim_locations_iu.unique_id",
+            "location_type": "Granularity of the region: city_region (most), city, state, country",
+            "main_hq_region": "Canonical main HQ region name (equals dim_locations_iu.name)",
+            "company_count": "Companies HQ'd in this region per the curation",
+            "source": "Provenance / quality flag: 'curated' (trusted), 'uncurated' (auto-matched), or a '… verify' note",
+        },
+    },
+}
+
 OUT = Path(__file__).resolve().parent.parent / "skills/dealroom-bigquery/references/schema.json"
+SCHEMA_MD = OUT.parent / "schema.md"
+COLINDEX_HEADER = """## Complete Column Index
+
+**Generated from `schema.json` by `scripts/update-schema.py` — do not hand-edit.**
+
+Every column and nested field, names only, so you can answer *"does this column exist?"* \
+without guessing a name. Types and descriptions are NOT here — once you have the name, grep \
+`schema.json`. Nested STRUCT/ARRAY fields appear as `parent.field` and require `UNNEST`.
+"""
 
 
 def find_dbt_repo():
@@ -73,7 +98,7 @@ def cols_from_yml(repo):
 def bq_types():
     """(table, column) -> data_type for every built column, in ordinal order."""
     types = {}
-    for dataset in SOURCES:
+    for dataset in dict.fromkeys(list(SOURCES) + list(NON_DBT)):
         sql = f"""SELECT p.table_name, p.field_path, p.data_type
         FROM `{PROJECT}.{dataset}`.INFORMATION_SCHEMA.COLUMN_FIELD_PATHS p
         JOIN `{PROJECT}.{dataset}`.INFORMATION_SCHEMA.COLUMNS c
@@ -120,6 +145,15 @@ def build(repo, use_types):
                 undocumented.append((t, c))  # built but not documented in yml
             rows.append({"table_name": t, "column_name": c,
                          "description": yml_desc.get((t, c), ""), "data_type": dt})
+
+    # Curated non-dbt tables: inline descriptions + BigQuery types. A missing type
+    # here means the curated table isn't in BigQuery — not a pending dbt build — so
+    # these are NOT added to `pending` (which points maintainers at dbt).
+    for _, tbls in NON_DBT.items():
+        for t, coldescs in tbls.items():
+            for c, desc in coldescs.items():
+                rows.append({"table_name": t, "column_name": c,
+                             "description": desc, "data_type": types.get((t, c), "")})
     return rows, pending, undocumented
 
 
@@ -133,6 +167,27 @@ def diff(old, new):
         for t, col in sorted(ks):
             print(f"  {label}: {t}.{col}")
     return a, r, c
+
+
+def write_column_index(rows):
+    """Refresh the Complete Column Index block in schema.md between its markers."""
+    if not SCHEMA_MD.exists():
+        return
+    from collections import OrderedDict
+    by_table = OrderedDict()
+    for r in rows:
+        by_table.setdefault(r["table_name"], []).append(r["column_name"])
+    parts = [COLINDEX_HEADER]
+    for t, cols in by_table.items():
+        parts.append(f"### `{t}` ({len(cols)})\n\n" + ", ".join(f"`{c}`" for c in cols))
+    block = "\n\n".join(parts)
+    md = SCHEMA_MD.read_text()
+    new = re.sub(
+        r"(<!-- BEGIN GENERATED COLUMN INDEX -->\n).*?(\n<!-- END GENERATED COLUMN INDEX -->)",
+        lambda m: m.group(1) + "\n" + block + "\n" + m.group(2), md, flags=re.S)
+    if new != md:
+        SCHEMA_MD.write_text(new)
+        print("Refreshed Complete Column Index in schema.md")
 
 
 def main():
@@ -155,12 +210,15 @@ def main():
             print(f"  · {t}.{col}")
     if not (a or r or c):
         print("\nNo changes to schema.json.")
+        if not check:
+            write_column_index(new)
         return
     print(f"\n{len(a)} added, {len(r)} removed, {len(c)} changed.")
     if check:
         sys.exit(1)
     OUT.write_text(json.dumps(new, indent=2, ensure_ascii=False) + "\n")
     print(f"Wrote {OUT}")
+    write_column_index(new)
 
 
 if __name__ == "__main__":
