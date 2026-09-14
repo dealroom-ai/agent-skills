@@ -18,6 +18,9 @@
 | `vc_combined_rounds_iu` | `intelligence_unit` | Combined-round base for VC round-size stats (median/quartile capital raised per company per stage) — base round + extensions summed, mega-rounds clustered | — |
 | `investors_iu` | `intelligence_unit` | Investor profiles, portfolio arrays, experience tags, LP relationships | — |
 | `vc_investor_returns_iu` | `intelligence_unit` | Per investor×company returns — invested vs realized/unrealized, MOIC/TVPI, `exit_value_source` | — |
+| `vc_funding_breakdown_iu` | `intelligence_unit` | Per-investor invested amount per VC round (`bucket_usd`, lead-weighted estimate); one row per investor×round | — |
+| `vc_ownership_iu` | `intelligence_unit` | Estimated cap table — each holder's diluted `ownership_pct` per company | — |
+| `vc_funding_estimated_amounts_iu` | `intelligence_unit` | Per-round amount used downstream — disclosed or modelled estimate (`amount_usd_filled`) | — |
 | `people_iu` | `intelligence_unit` | Individuals — founder flags, founder scores, gender, education | — |
 | `people_organizations_iu` | `intelligence_unit` | Person ↔ org join table (roles, titles, tenure, founder flag) | — |
 | `timeseries_data_iu` | `intelligence_unit` | Yearly snapshots per entity (employees, revenue, valuation, EBITDA, vc_funding) | — |
@@ -35,7 +38,7 @@
 | `power_law` | `reporting_iu` | Investor power-law ranking model (global) | — |
 | `power_law_rising_star_usa` | `reporting_iu` | Investor power-law ranking model (USA, Rising Stars tier) | — |
 
-> ⚠️ There is **no** `vc_funding_investors` table. For investor-per-round analysis, use `vc_funding_iu` / `funding_iu` and `UNNEST(funding_investors)`.
+> ⚠️ There is no `vc_funding_investors` table. To see **who** took part in a round, `UNNEST(funding_investors)` on `funding_iu` / `vc_funding_iu`. For **how much** each investor put in, use **`vc_funding_breakdown_iu`** (`bucket_usd`) — see the Investor economics section.
 
 ---
 
@@ -247,6 +250,43 @@ Per-position **investor returns**: invested capital vs realized/unrealized value
 - Estimates chain off `ownership_pct` (diluted estimate) and latest valuation — treat as directional, not audited.
 
 ---
+
+## Investor economics — the four-table chain
+
+These four tables model **who put in how much, for what stake, and what it's worth** — they chain together, so pick the one at the right grain rather than re-deriving:
+
+`vc_funding_estimated_amounts_iu` (round $) → `vc_funding_breakdown_iu` (per-investor $) → `vc_ownership_iu` (per-investor %) → `vc_investor_returns_iu` (per-investor profit/MOIC). All amounts USD; all estimates (lead-weighted allocation + dilution model), so treat as directional, not audited. `vc_funding_investors` (the array on `funding_iu`/`vc_funding_iu`) only tells you *who* participated — these tables tell you *how much*.
+
+## VC Funding Breakdown Table (`vc_funding_breakdown_iu`)
+
+**One row per investor per VC round** (grain: `investor_id` × `funding_id`) — expands the `funding_investors` array and attributes an estimated invested amount to each investor. VC rounds only (`flg_is_vc_round`). This **is** the per-investor `bucket_usd` table (supersedes the old "not deployed" note).
+
+- `investor_id`, `entity_id` (company), `funding_id` — all join to `entities_iu.id` / `funding_iu.id`
+- `bucket_usd` (FLOAT64) — **estimated capital this investor put into this round**, lead-weighted (leads take a floored ≥30% pool split equally; earlier stages give leads more; mega-rounds ≥$500M weight leads 1.15×). NULL only when the round has no amount at all.
+- `flg_is_lead_investor`, `investor_weight`, `lead_investors_count` / `non_lead_investors_count` / `total_investors_count`
+- `flg_is_estimated` — TRUE when the round's amount was modelled (see `vc_funding_estimated_amounts_iu`), not disclosed
+- `amount_usd` (round total), `round`, `base_label`, `preferred_round`, `year`, `month`, `quarter`
+
+**Gotchas:** `bucket_usd` is an **allocation estimate**, not a disclosed per-investor cheque — filter/flag `flg_is_estimated` when precision matters. For source-of-capital-by-stage, bucket into `$0–15M / $15–100M / $100M+` rather than round labels.
+
+## VC Ownership Table (`vc_ownership_iu`)
+
+**Estimated cap table — one row per holder per company** (grain: `investor_id` × `entity_id`): each holder's diluted `ownership_pct` after all rounds.
+
+- `investor_id`, `entity_id` → `entities_iu.id`
+- `ownership_pct` (FLOAT64) — **fraction 0–1** (not %), diluted share after every round
+- `flg_is_founders`, `flg_is_esop`, `flg_is_bankrupt` (bankrupt companies valued at 0 downstream)
+
+**Gotchas:** built by walking rounds in date order (founders start 100%, each round issues `bucket_usd/post_money` and dilutes priors). `post_money` uses the **oversized-round rule** — if a round exceeds 35% of the nearest valuation, it prices off the first real valuation within 12 months after. It's a **model**, not a filed cap table.
+
+## VC Funding Estimated Amounts Table (`vc_funding_estimated_amounts_iu`)
+
+**One row per VC round** (grain: `funding_id`/`id`) — the round amount actually used downstream: disclosed USD when set, else a modelled estimate.
+
+- `amount_usd` (disclosed, may be NULL), `amount_usd_filled` (**disclosed-or-estimated — use this**), `estimated_amount_usd`, `estimated_amount_mean_usd`
+- `estimate_method`, `estimate_sample_size`, `flg_is_estimated`, `base_label`, `standardised_round_label`, `primary_industry_id`/`_name`, `round`, `year`
+
+**Gotchas:** the estimate is the **median** USD amount of the two preceding years for the same primary industry + round bucket (median, not mean — round sizes are long-tailed), falling back to `base_label` alone. `base_label` folds extensions into their base round.
 
 ## People & People_Organizations Tables (`people_iu`, `people_organizations_iu`)
 
@@ -560,6 +600,18 @@ Every column and nested field, names only, so you can answer *"does this column 
 ### `vc_investor_returns_iu` (13)
 
 `investor_id`, `entity_id`, `ownership_pct`, `invested_usd`, `flg_is_exited`, `flg_is_bankrupt`, `est_exit_proceeds_usd`, `est_future_proceeds_usd`, `exit_value_source`, `est_total_value_usd`, `est_profit_usd`, `realized_moic`, `tvpi`
+
+### `vc_funding_breakdown_iu` (17)
+
+`funding_id`, `entity_id`, `investor_id`, `round`, `base_label`, `year`, `month`, `quarter`, `amount_usd`, `flg_is_estimated`, `flg_is_lead_investor`, `lead_investors_count`, `non_lead_investors_count`, `total_investors_count`, `investor_weight`, `preferred_round`, `bucket_usd`
+
+### `vc_ownership_iu` (6)
+
+`entity_id`, `investor_id`, `ownership_pct`, `flg_is_founders`, `flg_is_esop`, `flg_is_bankrupt`
+
+### `vc_funding_estimated_amounts_iu` (15)
+
+`id`, `entity_id`, `round`, `base_label`, `standardised_round_label`, `year`, `primary_industry_id`, `primary_industry_name`, `amount_usd`, `estimated_amount_usd`, `estimated_amount_mean_usd`, `estimate_method`, `estimate_sample_size`, `flg_is_estimated`, `amount_usd_filled`
 
 ### `people_iu` (29)
 

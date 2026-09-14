@@ -1710,6 +1710,234 @@
     "data_type": "FLOAT64"
   },
   {
+    "table_name": "vc_funding_breakdown_iu",
+    "column_name": "funding_id",
+    "description": "Unique identifier for the funding round (references funding.id)",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "vc_funding_breakdown_iu",
+    "column_name": "entity_id",
+    "description": "Identifier of the company that raised the round (references entities.id)",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "vc_funding_breakdown_iu",
+    "column_name": "investor_id",
+    "description": "Identifier of the investor in this round (references entities.id where flg_is_investor = true)",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "vc_funding_breakdown_iu",
+    "column_name": "round",
+    "description": "Native funding round label (e.g., SEED, SERIES A, EARLY VC). Drives the allocation logic.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "vc_funding_breakdown_iu",
+    "column_name": "base_label",
+    "description": "Round label for grouping/slicing the breakdown, including null-amount\n(estimated) rounds. Equals the NATIVE round — no standardised conversion\nis applied here. The standardised label / extension folding is used only\ninside vc_funding_estimated_amounts to compute the amount median.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "vc_funding_breakdown_iu",
+    "column_name": "year",
+    "description": "Year the funding round occurred",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "vc_funding_breakdown_iu",
+    "column_name": "month",
+    "description": "Month the funding round occurred (1-12), or NULL when unknown. Upstream funding_iu spells unknown as either NULL or 0; both arrive here as NULL",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "vc_funding_breakdown_iu",
+    "column_name": "quarter",
+    "description": "Calendar quarter of the funding round (Q1-Q4). Recomputed here rather than taken from funding_iu, which yields an invalid 'Q0' for rounds with month = 0",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "vc_funding_breakdown_iu",
+    "column_name": "amount_usd",
+    "description": "Round amount in USD used for bucketing — actual when disclosed, otherwise the modelled estimate; NULL only when neither is available",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "vc_funding_breakdown_iu",
+    "column_name": "flg_is_estimated",
+    "description": "True when amount_usd was estimated (round had no disclosed amount) rather than actual",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "vc_funding_breakdown_iu",
+    "column_name": "flg_is_lead_investor",
+    "description": "True if this investor is a lead investor in the round",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "vc_funding_breakdown_iu",
+    "column_name": "lead_investors_count",
+    "description": "Total number of lead investors in this round",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "vc_funding_breakdown_iu",
+    "column_name": "non_lead_investors_count",
+    "description": "Total number of non-lead investors in this round",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "vc_funding_breakdown_iu",
+    "column_name": "total_investors_count",
+    "description": "Total number of investors (lead + non-lead) in this round",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "vc_funding_breakdown_iu",
+    "column_name": "investor_weight",
+    "description": "Stage-preference multiplier applied to this investor's share of the\nnon-lead pool (or the full amount in all-lead/all-non-lead rounds).\n1.0x for generalists/unmapped and specialists at or later than the\nround; 0.8x one stage below; 0.6x two or more stages below.",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "vc_funding_breakdown_iu",
+    "column_name": "preferred_round",
+    "description": "Investor's preferred round from investors_stage_focus_iu ('Generalist' when no dominant stage)",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "vc_funding_breakdown_iu",
+    "column_name": "bucket_usd",
+    "description": "Estimated amount invested by this investor in USD, per the allocation\nlogic described on the model (lead pool + stage-preference-weighted\nnon-lead split, with manual overrides applied last). NULL only when\nneither an actual nor an estimated round amount is available.",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "vc_ownership_iu",
+    "column_name": "entity_id",
+    "description": "Identifier of the company whose cap table this is (references entities_iu.id)",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "vc_ownership_iu",
+    "column_name": "investor_id",
+    "description": "Identifier of the holding investor (references entities_iu.id). NULL on the founders and ESOP rows",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "vc_ownership_iu",
+    "column_name": "ownership_pct",
+    "description": "Holder's estimated share of the company as a fraction (0-1, not a percentage), after dilution by every later round. Zero for every holder of a bankrupt company",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "vc_ownership_iu",
+    "column_name": "flg_is_founders",
+    "description": "True on the single founders/residual row per company - everything not attributed to a named investor, which for a company that has not exited still includes the option pool",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "vc_ownership_iu",
+    "column_name": "flg_is_esop",
+    "description": "True on the employee option pool row. Present for EXITED companies only (8% carved out of the founders/residual bucket); live companies have no ESOP row",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "vc_ownership_iu",
+    "column_name": "flg_is_bankrupt",
+    "description": "True when the company has a BANKRUPTCY round. Equity is treated as wiped, so every holder's ownership_pct is zero and the company is excluded from sum-to-1.0 checks",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "vc_funding_estimated_amounts_iu",
+    "column_name": "id",
+    "description": "Funding round identifier (references funding.id)",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "vc_funding_estimated_amounts_iu",
+    "column_name": "entity_id",
+    "description": "Identifier of the company that raised the round (references entities_iu.id)",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "vc_funding_estimated_amounts_iu",
+    "column_name": "round",
+    "description": "Native funding round label (e.g. SEED, SERIES A, EARLY VC)",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "vc_funding_estimated_amounts_iu",
+    "column_name": "base_label",
+    "description": "Round bucket used for pooling - the standardised label with ' EXTENSION' stripped, falling back to the native round",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "vc_funding_estimated_amounts_iu",
+    "column_name": "standardised_round_label",
+    "description": "Standardised round label from funding, including any EXTENSION marker",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "vc_funding_estimated_amounts_iu",
+    "column_name": "year",
+    "description": "Year the round occurred",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "vc_funding_estimated_amounts_iu",
+    "column_name": "primary_industry_id",
+    "description": "Identifier of the company's primary industry, used as the tier-1 pooling key",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "vc_funding_estimated_amounts_iu",
+    "column_name": "primary_industry_name",
+    "description": "Name of the company's primary industry",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "vc_funding_estimated_amounts_iu",
+    "column_name": "amount_usd",
+    "description": "Disclosed round amount in USD as recorded on the round; NULL or 0 when undisclosed",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "vc_funding_estimated_amounts_iu",
+    "column_name": "estimated_amount_usd",
+    "description": "Modelled round amount in USD (median of the pool). Populated whether or not the round has a disclosed amount, so the two can be compared",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "vc_funding_estimated_amounts_iu",
+    "column_name": "estimated_amount_mean_usd",
+    "description": "Mean of the same pool, kept for reference only - the estimate itself uses the median",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "vc_funding_estimated_amounts_iu",
+    "column_name": "estimate_method",
+    "description": "Which tier produced the estimate: 'industry_round' (primary industry + base_label) or 'round_only' (base_label globally). NULL when no estimate could be made",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "vc_funding_estimated_amounts_iu",
+    "column_name": "estimate_sample_size",
+    "description": "Number of rounds in the pool the estimate was drawn from - low values mean a weak estimate",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "vc_funding_estimated_amounts_iu",
+    "column_name": "flg_is_estimated",
+    "description": "True when the round had no disclosed amount AND an estimate was available, i.e. amount_usd_filled is modelled rather than reported",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "vc_funding_estimated_amounts_iu",
+    "column_name": "amount_usd_filled",
+    "description": "The amount every downstream model uses - the disclosed USD amount when set, otherwise estimated_amount_usd. NULL when neither exists",
+    "data_type": "FLOAT64"
+  },
+  {
     "table_name": "people_iu",
     "column_name": "id",
     "description": "Unique identifier for the person",
