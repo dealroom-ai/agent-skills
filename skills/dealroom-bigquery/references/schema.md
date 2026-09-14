@@ -17,6 +17,7 @@
 | `vc_funding_iu` | `intelligence_unit` | VC-only funding subset (pre-filtered: excludes outside-tech & mature-stage companies) | ~549K |
 | `vc_combined_rounds_iu` | `intelligence_unit` | Combined-round base for VC round-size stats (median/quartile capital raised per company per stage) — base round + extensions summed, mega-rounds clustered | — |
 | `investors_iu` | `intelligence_unit` | Investor profiles, portfolio arrays, experience tags, LP relationships | — |
+| `vc_investor_returns_iu` | `intelligence_unit` | Per investor×company returns — invested vs realized/unrealized, MOIC/TVPI, `exit_value_source` | — |
 | `people_iu` | `intelligence_unit` | Individuals — founder flags, founder scores, gender, education | — |
 | `people_organizations_iu` | `intelligence_unit` | Person ↔ org join table (roles, titles, tenure, founder flag) | — |
 | `timeseries_data_iu` | `intelligence_unit` | Yearly snapshots per entity (employees, revenue, valuation, EBITDA, vc_funding) | — |
@@ -426,7 +427,7 @@ WITH company_hq AS (
     AND EXISTS (SELECT 1 FROM UNNEST(e.technologies) t WHERE t.id = 6)   -- deep tech; swap/remove to re-cut
 ),
 cand AS (
-  SELECT c.id, m.main_hq_region, m.location_type
+  SELECT c.id, m.main_hq_region, m.location_type, m.company_count
   FROM company_hq c
   JOIN `omega-dahlia-347111.intelligence_unit.main_hq_regions` m
     ON m.dim_locations_iu_unique_id IN UNNEST(c.hq_loc_ids)
@@ -434,7 +435,8 @@ cand AS (
 ),
 company_region AS (
   SELECT id, ARRAY_AGG(main_hq_region ORDER BY
-           CASE location_type WHEN 'city_region' THEN 1 WHEN 'city' THEN 2 WHEN 'state' THEN 3 ELSE 4 END
+           CASE location_type WHEN 'city_region' THEN 1 WHEN 'city' THEN 2 WHEN 'state' THEN 3 ELSE 4 END,
+           company_count DESC, main_hq_region   -- deterministic tie-break on same-granularity ties
          LIMIT 1)[OFFSET(0)] AS main_hq_region
   FROM cand GROUP BY id
 )
