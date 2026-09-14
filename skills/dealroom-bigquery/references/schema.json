@@ -1638,6 +1638,84 @@
     "data_type": "FLOAT64"
   },
   {
+    "table_name": "vc_investor_returns_iu",
+    "column_name": "investor_id",
+    "description": "Identifier of the investor holding the position (references entities_iu.id)",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "vc_investor_returns_iu",
+    "column_name": "entity_id",
+    "description": "Identifier of the portfolio company (references entities_iu.id)",
+    "data_type": "INT64"
+  },
+  {
+    "table_name": "vc_investor_returns_iu",
+    "column_name": "ownership_pct",
+    "description": "Investor's estimated diluted share of the company as a fraction (0-1, not a percentage), from vc_ownership_iu",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "vc_investor_returns_iu",
+    "column_name": "invested_usd",
+    "description": "Capital the investor put into this company in USD - the sum of their per-round bucket_usd across the company's rounds (vc_funding_breakdown_iu)",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "vc_investor_returns_iu",
+    "column_name": "flg_is_exited",
+    "description": "True when the company has exited (entities_iu.flg_is_exited - acquisition, IPO, buyout or SPAC IPO)",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "vc_investor_returns_iu",
+    "column_name": "flg_is_bankrupt",
+    "description": "True when the company is flagged bankrupt in the cap table; such positions are valued at 0",
+    "data_type": "BOOL"
+  },
+  {
+    "table_name": "vc_investor_returns_iu",
+    "column_name": "est_exit_proceeds_usd",
+    "description": "Estimated realized proceeds in USD - ownership_pct x exit value, for exited companies only (0 otherwise). Uses the first disclosed exit transaction, falling back to the latest valuation when undisclosed",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "vc_investor_returns_iu",
+    "column_name": "est_future_proceeds_usd",
+    "description": "Estimated unrealized value in USD - ownership_pct x the company's latest valuation, for still-private solvent companies only (0 otherwise)",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "vc_investor_returns_iu",
+    "column_name": "exit_value_source",
+    "description": "Where est_exit_proceeds_usd came from, so a booked exit can be told apart from an\nestimate. Never NULL.\nAvailable values: \"disclosed_exit_amount\" (a disclosed ACQUISITION / BUYOUT / IPO /\nSPAC IPO transaction amount was used), \"estimated_from_valuation\" (the exit value is not\ndisclosed, so the company's latest valuation was used as an estimate),\n\"no_value_available\" (the company exited but has neither, so the position is\nvalued at 0), \"not_exited\" (the company has not exited - its value is in\nest_future_proceeds_usd instead).\nMost exits are undisclosed, so the majority of realized value carries\n\"estimated_from_valuation\": filter on this before treating realized figures as\nmoney actually returned.",
+    "data_type": "STRING"
+  },
+  {
+    "table_name": "vc_investor_returns_iu",
+    "column_name": "est_total_value_usd",
+    "description": "Estimated total value of the position in USD (est_exit_proceeds_usd + est_future_proceeds_usd)",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "vc_investor_returns_iu",
+    "column_name": "est_profit_usd",
+    "description": "Estimated gain in USD (est_total_value_usd - invested_usd). Negative when the position is currently worth less than the capital invested",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "vc_investor_returns_iu",
+    "column_name": "realized_moic",
+    "description": "Realized multiple on invested capital (est_exit_proceeds_usd / invested_usd) for exited positions; NULL for positions that have not exited",
+    "data_type": "FLOAT64"
+  },
+  {
+    "table_name": "vc_investor_returns_iu",
+    "column_name": "tvpi",
+    "description": "Total value to paid-in - (realized + unrealized value) / invested_usd. NULL when invested_usd is 0 or unknown",
+    "data_type": "FLOAT64"
+  },
+  {
     "table_name": "people_iu",
     "column_name": "id",
     "description": "Unique identifier for the person",

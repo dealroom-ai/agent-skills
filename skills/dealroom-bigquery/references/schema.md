@@ -226,6 +226,27 @@ Note: An investor's "most-frequent round type" is NOT a pre-computed reliable fi
 
 ---
 
+## VC Investor Returns Table (`vc_investor_returns_iu`)
+
+Per-position **investor returns**: invested capital vs realized/unrealized value, with MOIC and TVPI. **Grain: one row per (`investor_id`, `entity_id`)** — an investor's stake in one portfolio company. Both ids join to `entities_iu.id` (`investor_id` = the investor, `entity_id` = the portfolio company).
+
+- `invested_usd` — capital this investor put into this company (sum of their per-round `bucket_usd` from `vc_funding_breakdown_iu`)
+- `ownership_pct` — estimated diluted share as a **fraction 0–1** (not a percentage), from `vc_ownership_iu`
+- `est_exit_proceeds_usd` — **realized** value: `ownership_pct × exit value`, exited companies only (0 otherwise)
+- `est_future_proceeds_usd` — **unrealized** value: `ownership_pct × latest valuation`, still-private solvent companies only (0 otherwise)
+- `est_total_value_usd` = exit + future; `est_profit_usd` = total − invested (negative = underwater)
+- `realized_moic` — `est_exit_proceeds_usd / invested_usd`, **NULL for positions that haven't exited**
+- `tvpi` — (realized + unrealized) / invested; NULL when `invested_usd` is 0/unknown
+- `flg_is_exited`, `flg_is_bankrupt` (bankrupt positions valued at 0)
+- `exit_value_source` — provenance of `est_exit_proceeds_usd`, never NULL: `disclosed_exit_amount`, `estimated_from_valuation`, `no_value_available`, `not_exited`
+
+**Gotchas:**
+- **Per-company grain — do NOT join to `funding_iu`/rounds.** `invested_usd` already aggregates the per-round buckets; joining rounds double-counts. Aggregate this table directly (e.g. `SUM(est_profit_usd)` per investor).
+- **Realized ≠ money actually returned.** Most exits are undisclosed, so the majority of realized value carries `exit_value_source = 'estimated_from_valuation'`. Filter on `exit_value_source = 'disclosed_exit_amount'` before treating realized figures / `realized_moic` as booked returns.
+- Estimates chain off `ownership_pct` (diluted estimate) and latest valuation — treat as directional, not audited.
+
+---
+
 ## People & People_Organizations Tables (`people_iu`, `people_organizations_iu`)
 
 **people_iu:**
@@ -505,6 +526,10 @@ Every column and nested field, names only, so you can answer *"does this column 
 ### `investors_iu` (36)
 
 `bobject_investor_id`, `entities_invested_in`, `investor_types`, `deal_structure`, `deal_structure.id`, `deal_structure.name`, `preferred_round`, `total_investments_count`, `min_deal_size`, `max_deal_size`, `industry_experience`, `industry_experience.id`, `industry_experience.name`, `sub_industry_experience`, `sub_industry_experience.id`, `sub_industry_experience.name`, `tags_experience`, `tags_experience.id`, `tags_experience.name`, `total_funding_eur`, `total_funding_usd`, `country_experience`, `investment_stages`, `known_limited_partners`, `lp_investments`, `funds`, `funds.fund_id`, `funds.fund_name`, `funds.amount`, `funds.currency`, `funds.fund_type`, `funds.flg_is_closed`, `funds.fund_date`, `funds.source_url`, `aum_eur`, `aum_usd`
+
+### `vc_investor_returns_iu` (13)
+
+`investor_id`, `entity_id`, `ownership_pct`, `invested_usd`, `flg_is_exited`, `flg_is_bankrupt`, `est_exit_proceeds_usd`, `est_future_proceeds_usd`, `exit_value_source`, `est_total_value_usd`, `est_profit_usd`, `realized_moic`, `tvpi`
 
 ### `people_iu` (34)
 
