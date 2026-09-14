@@ -25,12 +25,6 @@
   },
   {
     "table_name": "entities_iu",
-    "column_name": "main_hq_region_unique_id",
-    "description": "The single curated \"main\" HQ region for this company, joining\ndim_locations_iu.unique_id. Exists so region rankings don't double-count a company\nthat sits in several overlapping curated regions.\n\nFrom the main_hq_regions seed, which covers unicorns + thoroughbreds only (4,729\ncompanies, 309 regions) - NULL for every other entity by design, not missing data.\nMix by location type: 4,191 city_region, 357 state, 131 city, 50 country, so do not\nassume it is always a city_region.\n\nunique_id, not id: dim_locations id collides across location types (503 colliding\nids) and this column mixes types.",
-    "data_type": ""
-  },
-  {
-    "table_name": "entities_iu",
     "column_name": "name",
     "description": "Name of the entity",
     "data_type": "STRING"
@@ -1846,36 +1840,6 @@
     "column_name": "universities.year_end",
     "description": "Year the person finished their studies at the university",
     "data_type": "INT64"
-  },
-  {
-    "table_name": "people_iu",
-    "column_name": "origin_country_unique_id",
-    "description": "Curated country of origin, joining dim_locations_iu.unique_id. Almost always\nlocation_type='country'; the one exception is \"Palestinian Territories\" (7596), a\ncountry_region, used because the sources say only \"Palestine\" and Dealroom splits the\nterritory into two countries, West Bank and Gaza strip.\nFrom the founder_origins seed - 21,378 people, 136 distinct ids. NULL for everyone\nelse, which is most people. Check origin_match_method before trusting a row.",
-    "data_type": ""
-  },
-  {
-    "table_name": "people_iu",
-    "column_name": "origin_emigration_age",
-    "description": "Age when the person left their origin country, as curated. Free text, not validated -\n1,654 rows set, 533 of them ranges (\"23-24\"). Not a birth date.",
-    "data_type": ""
-  },
-  {
-    "table_name": "people_iu",
-    "column_name": "origin_arrival_year",
-    "description": "Year of arrival in the destination country, as curated. 2,580 rows set here: the seed\nhas 2,655, and the 75 approximate or range values (\"1980s\", \"~1987\", \"2013-2015\") are\nNULL after the INT64 cast. Read founder_origins.arrival_year for those.",
-    "data_type": ""
-  },
-  {
-    "table_name": "people_iu",
-    "column_name": "origin_match_method",
-    "description": "Resolution path, strongest first: linkedin_slug (1,345, joined on\nbusiness_objects.linkedin - no name matching), exact (16,523, within the company's own\nteam), global_unique_founder_name (1,190), global_unique_person_name (589), token_set\n(174), rule_source_company_match (96), rule_single_candidate (14), rule_only_founder\n(14), token_subset (880), rule_dominant_profile (553). Counts sum to 21,378.\n\ntoken_subset accepts \"John Smith\" inside \"John Michael Smith\"; rule_dominant_profile\npicked the most prominent same-name person by founded-company and role counts, a prior\nnot proof. Exclude both for anything high-stakes. See the founder_origins seed docs.",
-    "data_type": ""
-  },
-  {
-    "table_name": "people_iu",
-    "column_name": "origin_resolution_rule",
-    "description": "Non-null (785 rows) where an ambiguity had to be settled; NULL where the row was\nunambiguous. See the founder_origins seed docs for the value list.",
-    "data_type": ""
   },
   {
     "table_name": "people_iu",
