@@ -444,7 +444,7 @@ SELECT main_hq_region, COUNT(*) AS companies, RANK() OVER (ORDER BY COUNT(*) DES
 FROM company_region GROUP BY main_hq_region ORDER BY rnk;
 ```
 
-Validated deep-tech order: Bay Area, Greater London, New York Metro, Greater Tel Aviv, Greater Boston. **Future simplification:** an `entities_iu.main_hq_region_unique_id` column is declared in dbt but **not yet built** — once it lands this collapses to a single-column join (`m.dim_locations_iu_unique_id = e.main_hq_region_unique_id`), no `company_hq`/`cand` CTEs needed.
+Validated deep-tech order: Bay Area, Greater London, New York Metro, Greater Tel Aviv, Greater Boston.
 
 ---
 
