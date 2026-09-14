@@ -140,7 +140,8 @@ def build(repo, use_types):
             seen.add(c)
             in_yml, dt = (t, c) in yml_desc, types.get((t, c), "")
             if in_yml and use_types and not dt:
-                pending.append((t, c))       # declared but not built yet
+                pending.append((t, c))       # declared in dbt but not built — EXCLUDE (no future-feature noise)
+                continue
             if not in_yml:
                 undocumented.append((t, c))  # built but not documented in yml
             rows.append({"table_name": t, "column_name": c,
@@ -201,7 +202,7 @@ def main():
           + (f"; {len(pending)} not yet built in BigQuery" if use_types else " (types skipped)") + ".")
     a, r, c = diff(old, new)
     if pending:
-        print("\nDeclared in yml but NOT yet in BigQuery (run/deploy dbt to build):")
+        print("\nDeclared in dbt but NOT built in BigQuery — EXCLUDED from schema.json until built:")
         for t, col in sorted(pending):
             print(f"  · {t}.{col}")
     if undocumented:
